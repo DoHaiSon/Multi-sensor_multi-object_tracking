@@ -65,7 +65,7 @@ def plot_sensor_positions(model, writer):
     """
     Plot the sensor positions and ranges and log the plot to TensorBoard.
     """
-    fig, ax = plt.subplots(figsize=(10, 10), dpi=300)  # Increase figure size and DPI for higher resolution
+    fig, ax = plt.subplots(figsize=(10, 10), dpi=250)  
     ax.set_title('Sensor Positions and Ranges')
     ax.set_xlabel('X Position')
     ax.set_ylabel('Y Position')

@@ -1,6 +1,5 @@
 import os, sys, random
 import numpy as np
-import torch
 from models.dynamic import DynamicModel
 
 def set_seed(seed):
@@ -13,12 +12,9 @@ def set_seed(seed):
     This function sets the seed for:
     - Python's built-in random module
     - NumPy's random module
-    - PyTorch (both CPU and GPU)
     """
     random.seed(seed)  # For Python random
     np.random.seed(seed)  # For NumPy random
-    torch.manual_seed(seed)  # For PyTorch
-    torch.cuda.manual_seed_all(seed)  # If using CUDA
 
 def load_configurations(args, writer):
     """
