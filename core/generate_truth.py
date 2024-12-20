@@ -1,5 +1,5 @@
 import numpy as np
-from utils.generate_new_state import gen_new_state
+from core.generate_new_state import gen_new_state
 import matplotlib.pyplot as plt
 
 def gen_truth(args, model):

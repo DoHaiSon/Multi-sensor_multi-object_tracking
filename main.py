@@ -3,9 +3,9 @@ import numpy as np
 from tensorboardX import SummaryWriter
 
 from config import get_args 
+from core.generate_truth import gen_truth, plot_truth
+from core.generate_measurements import gen_measurements, plot_measurements
 from utils.common import set_seed, load_configurations, select_model
-from utils.generate_truth import gen_truth, plot_truth
-from utils.generate_measurements import gen_measurements, plot_measurements
 
 if __name__ == '__main__':
     args = get_args()
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     # Generate measurements
     measurements = gen_measurements(args, model.sensors, truth)
 
-    # Visualize measurements
+    # Visualize measurements: heavy computation (RAM), consider commenting out
     plot_measurements(args, truth, measurements, model.sensors, 0, args.K, writer)
 
     writer.close()
