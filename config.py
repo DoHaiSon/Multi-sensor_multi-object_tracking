@@ -20,17 +20,28 @@ def get_args():
                         choices=['Dynamic', 'Brg', 'Brg_rng'], help='Model to use for generating data')
     parser.add_argument('--P_D', default=0.95, type=float, help='Probability of detection')
     parser.add_argument('--lambda_c', default=10, type=float, help='Average number of clutter per frame')
-    parser.add_argument('--P_S', type=float, default=0.95, help='Probability of survival')
-    parser.add_argument('--Q_S', type=float, default=1 - 0.95, help='Probability of death')
-    parser.add_argument('--P_S_clt', type=float, default=0.9, help='Probability of survival for clutter')
 
-    # Dynamic model parameters
+    # Dynamic parameters
     parser.add_argument('--x_dim', type=int, default=5, help='Dimension of state vector x (x, v_x, y, v_y, omega)')
     parser.add_argument('--z_dim', type=int, default=2, help='Dimension of measurement vector z (azimuth, range)')
     parser.add_argument('--v_dim', type=int, default=3, help='Dimension of process noise vector v')
     parser.add_argument('--T', type=float, default=1.0, help='Sampling time interval')
     parser.add_argument('--sigma_vel', type=float, default=5.0, help='Velocity noise standard deviation')
     parser.add_argument('--sigma_turn', type=float, default=np.pi/180, help='Turn rate noise standard deviation')
+
+    # Survival/death parameters
+    parser.add_argument('--P_S', type=float, default=0.95, help='Probability of survival')
+    parser.add_argument('--Q_S', type=float, default=1 - 0.95, help='Probability of death')
+    parser.add_argument('--P_S_clt', type=float, default=0.9, help='Probability of survival for clutter')
+
+    # Birth parameters
+    parser.add_argument('--fixed_birth', default=True, type=str2bool, help='Use pre-defined birth model (True) or random birth model (False)')
+
+    # Observation parameters
+    parser.add_argument('--pdf_c', type=float, default=1/(np.pi * 4000), help='Probability density function for clutter')
+    parser.add_argument('--range_c_1', type=float, nargs=4, default=[-np.pi/2, np.pi/2, 0, 4000], help='Range clutter 1')
+    parser.add_argument('--range_c_2', type=float, nargs=4, default=[np.pi/2, 3*np.pi/2, 0, 4000], help='Range clutter 2')
+    parser.add_argument('--D', type=float, nargs=2, default=[2*np.pi/180, 10], help='Diagonal elements for D matrix')
 
     # Running parameters
     parser.add_argument('--verbose', default=True, type=str2bool, help='Enable verbose output')
