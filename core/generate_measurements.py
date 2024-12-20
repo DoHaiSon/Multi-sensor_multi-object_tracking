@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from utils.helpers import create_color_palette
 
 def gen_measurements(args, sensors, truth):
     """
@@ -46,9 +47,17 @@ def gen_measurements(args, sensors, truth):
             # Generate clutter
             N_c = np.random.poisson(lambda_c)
             if N_c > 0:
-                C = np.tile(sensors[s]['range_c'][:,0][:,None], [1, N_c]) + \
-                    np.diag(sensors[s]['range_c'] @ [-1, 1]) @ \
-                    np.random.rand(sensors[s]['z_dim'], N_c)
+                range_c = sensors[s]['range_c']
+                
+                # Handle both 1D and 2D range_c
+                if range_c.ndim == 1:
+                    # For 1D measurements (e.g., bearing only)
+                    C = np.random.uniform(range_c[0], range_c[1], size=(1, N_c))
+                else:
+                    # For 2D measurements (e.g., bearing-range)
+                    C = np.tile(range_c[:,0][:,None], [1, N_c]) + \
+                        np.diag(range_c @ [-1, 1]) @ \
+                        np.random.rand(sensors[s]['z_dim'], N_c)
                 
                 # Combine target measurements and clutter
                 if len(meas['Z'][k][s]) > 0:
@@ -73,11 +82,16 @@ def gen_MS_observation(sensors, s, X, W):
     """
     if not isinstance(W, np.ndarray):
         if W == 'noise':
-            # Generate multivariate normal noise
-            W = np.random.multivariate_normal(
-                mean=np.zeros(sensors[s]['z_dim']), 
-                cov=sensors[s]['R'], 
-                size=X.shape[1]).T
+            # Handle noise generation based on measurement dimension
+            if sensors[s]['z_dim'] == 1:
+                # For 1D measurements (e.g., bearing only)
+                W = np.random.normal(0, np.sqrt(sensors[s]['R']), (1, X.shape[1]))
+            else:
+                # For multi-dimensional measurements
+                W = np.random.multivariate_normal(
+                    mean=np.zeros(sensors[s]['z_dim']), 
+                    cov=sensors[s]['R'], 
+                    size=X.shape[1]).T
         elif W == 'noiseless':
             W = np.zeros((sensors[s]['R'].shape[0], X.shape[1]))
     
@@ -87,8 +101,12 @@ def gen_MS_observation(sensors, s, X, W):
     sensor_type = sensors[s]['type']
     
     if sensor_type == 'brg':
-        Z = np.mod(np.arctan2(X[0,:] - sensors[s]['X'][0], 
-                             X[2,:] - sensors[s]['X'][1]) + W, 2*np.pi)
+        Z = np.arctan2(X[2,:] - sensors[s]['X'][1], 
+                      X[0,:] - sensors[s]['X'][0])
+        if isinstance(W, np.ndarray):
+            Z = Z + W[0] if W.shape[0] == 1 else Z + W
+        Z = np.mod(Z, 2*np.pi)
+        Z = Z.reshape(1, -1)  # Ensure 2D array shape (1, N)
         
     elif sensor_type == 'rng':
         Z = np.sqrt((sensors[s]['X'][0] - X[0,:])**2 + 
@@ -169,7 +187,8 @@ def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer
     import gc
 
     frames = []
-    sensor_colors = ['r', 'g', 'b', 'm']  # Colors for each sensor
+    # Create color palette based on number of sensors
+    sensor_colors = create_color_palette(len(sensors))
     
     for k in range(start_k, end_k):
         fig = plt.figure(figsize=(10, 10), dpi=250)
@@ -185,7 +204,7 @@ def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer
         for s in range(len(sensors)):
             # Plot sensor position
             ax.scatter(sensors[s]['X'][0], sensors[s]['X'][1],
-                      c=sensor_colors[s], marker='*', s=200,
+                      c=[sensor_colors[s]], marker='*', s=200,
                       label=f'Sensor {s+1}')
             
             # Plot measurements for this sensor
@@ -194,7 +213,7 @@ def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer
                     # Direct position measurements
                     ax.scatter(measurements['Z'][k][s][0,:], 
                              measurements['Z'][k][s][1,:],
-                             c=sensor_colors[s], marker='o', s=64,
+                             c=[sensor_colors[s]], marker='o', s=64,
                              alpha=0.5)
                 elif sensors[s]['type'] in ['brg_rng', 'brg_rng_rngrt']:
                     # Convert polar to Cartesian for plotting
@@ -204,8 +223,19 @@ def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer
                         x = sensors[s]['X'][0] + rng * np.cos(brg)
                         y = sensors[s]['X'][1] + rng * np.sin(brg)
                         ax.scatter(x, y,
-                                 c=sensor_colors[s], marker='o', s=64,
+                                 c=[sensor_colors[s]], marker='o', s=64,
                                  alpha=0.5)
+                elif sensors[s]['type'] == 'brg':
+                    # Plot bearing measurements as lines from sensor position
+                    for i in range(measurements['Z'][k][s].shape[1]):
+                        brg = measurements['Z'][k][s][0,i]
+                        # Plot a line in the bearing direction
+                        line_length = 4000  # Same as plot limits
+                        x = sensors[s]['X'][0] + line_length * np.cos(brg)
+                        y = sensors[s]['X'][1] + line_length * np.sin(brg)
+                        ax.plot([sensors[s]['X'][0], x],
+                               [sensors[s]['X'][1], y],
+                               c=sensor_colors[s], alpha=0.3)
         
         # Set plot properties
         ax.set_xlim(-4000, 4000)
@@ -214,7 +244,7 @@ def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer
         ax.set_xlabel('X Position')
         ax.set_ylabel('Y Position')
         ax.set_title(f'Time Step {k}')
-        ax.legend()
+        ax.legend(loc='upper right')
         
         # Convert plot to image
         buf = BytesIO()

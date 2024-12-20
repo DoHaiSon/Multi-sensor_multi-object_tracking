@@ -1,6 +1,8 @@
 import os, sys, random
 import numpy as np
-from models.dynamic import DynamicModel
+from models.basic import Basic_Model
+from models.brg import Brg_Model
+from models.brg_rng import Brg_rng_Model
 
 def set_seed(seed):
     """
@@ -58,8 +60,12 @@ def select_model(args, writer):
     Returns:
     model: The selected model based on the configuration settings.
     """
-    if args.model == 'Dynamic':
-        model = DynamicModel(args, writer)
+    if args.model == 'Basic':
+        model = Basic_Model(args, writer)
+    elif args.model == 'Brg':
+        model = Brg_Model(args, writer)
+    elif args.model == 'Brg_rng':
+        model = Brg_rng_Model(args, writer)
     else:
         raise ValueError(f"Invalid model: {args.model}")
     

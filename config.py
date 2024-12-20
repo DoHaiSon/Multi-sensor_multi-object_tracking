@@ -17,15 +17,15 @@ def get_args():
     parser = argparse.ArgumentParser(description='Multi-Sensor Multi-Object Tracking with Random Finite Set Theory')
 
     # Model parameters
-    parser.add_argument('--model', default='Dynamic', type=str,
-                        choices=['Dynamic', 'Brg', 'Brg_rng'], help='Model to use for generating data')
+    parser.add_argument('--model', default='Brg_rng', type=str,
+                        choices=['Basic', 'Brg', 'Brg_rng'], help='Model to use for generating data')
     parser.add_argument('--P_D', default=0.95, type=float, help='Probability of detection')
     parser.add_argument('--lambda_c', default=10, type=float, help='Average number of clutter per frame')
     parser.add_argument('--K', default=100, type=int, help='length of data/number of scans')
 
     # Dynamic parameters
     parser.add_argument('--x_dim', type=int, default=5, help='Dimension of state vector x (x, v_x, y, v_y, omega)')
-    parser.add_argument('--z_dim', type=int, default=2, help='Dimension of measurement vector z (azimuth, range)')
+    parser.add_argument('--z_dim', type=int, default=2, help='Dimension of measurement vector z (2 for Dynamic, 1 for Brg and Brg_rng)')
     parser.add_argument('--v_dim', type=int, default=3, help='Dimension of process noise vector v')
     parser.add_argument('--T', type=float, default=1.0, help='Sampling time interval')
     parser.add_argument('--sigma_vel', type=float, default=5.0, help='Velocity noise standard deviation')
@@ -45,6 +45,10 @@ def get_args():
     parser.add_argument('--range_c_2', type=float, nargs=4, default=[np.pi/2, 3*np.pi/2, 0, 4000], help='Range clutter 2')
     parser.add_argument('--D', type=float, nargs=2, default=[2*np.pi/180, 10], help='Diagonal elements for D matrix')
     parser.add_argument('--CT', default=True, type=str2bool, help='Use Constant Turn (True) or Constant Velocity (False) model')
+
+    # Sensor noise parameters
+    parser.add_argument('--bearing_D', type=float, default=0.2*np.pi/180, help='Bearing measurement noise standard deviation (radians)')
+    parser.add_argument('--range_D', type=float, default=10.0, help='Range measurement noise standard deviation')
 
     # Generate truth parameters
     parser.add_argument('--scenario', type=str, default='scenario1', help='Scenario file name in /examples folder (default: scenario1)')
@@ -77,4 +81,8 @@ def get_args():
     except ImportError:
         raise ValueError(f"Scenario '{args.scenario}' not found in examples folder")
     
+    # Adjust z_dim based on model type
+    if args.model == 'Brg' or args.model == 'Brg_rng':
+        args.z_dim = 1
+
     return args

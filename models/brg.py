@@ -1,7 +1,7 @@
 import numpy as np
 from utils.helpers import log_params, plot_sensor_positions
 
-class DynamicModel:
+class Brg_Model:
     def __init__(self, args, writer):
         self.args = args
         self.writer = writer
@@ -9,10 +9,10 @@ class DynamicModel:
         # Initialize dynamics
         self.dynamics = {
             'x_dim': self.args.x_dim,  # x, vx, y, vy, omega
-            'z_dim': self.args.z_dim,  # azimuth, range
+            'z_dim': self.args.z_dim,  # azimuth only
             'v_dim': self.args.v_dim,
             'T': self.args.T,
-            'sigma_vel': self.args.sigma_vel,
+            'sigma_vel': self.args.sigma_vel, 
             'sigma_turn': self.args.sigma_turn,
             'bt': None,
             'B2': None,
@@ -34,7 +34,7 @@ class DynamicModel:
         self.birth = self.initialize_birth_model()
 
         # Multisensor observation model
-        self.sensors = self.initialize_sensors([args.P_D, args.P_D], [args.lambda_c, args.lambda_c])
+        self.sensors = self.initialize_sensors([self.args.P_D, self.args.P_D], [self.args.lambda_c, self.args.lambda_c])
 
         # Log dynamics to TensorBoard
         log_params(args, self, self.writer)
@@ -43,19 +43,17 @@ class DynamicModel:
         plot_sensor_positions(self, self.writer)
 
     def calculate_noise_matrices(self):
-        """
-        Calculate noise-related variables in the dynamics dictionary.
-        """
+        """Calculate noise-related variables in the dynamics dictionary."""
         # Calculate bt (2x1 vector)
         self.dynamics['bt'] = self.dynamics['sigma_vel'] * np.array([(self.dynamics['T'] ** 2) / 2, self.dynamics['T']])
 
-        # Calculate B2 (5x3 matrix) correctly matching MATLAB structure
+        # Calculate B2 (5x3 matrix)
         self.dynamics['B2'] = np.array([
-            [self.dynamics['bt'][0], 0.0, 0.0],             # First row
-            [self.dynamics['bt'][1], 0.0, 0.0],             # Second row
-            [0.0, self.dynamics['bt'][0], 0.0],             # Third row
-            [0.0, self.dynamics['bt'][1], 0.0],             # Fourth row
-            [0.0, 0.0, self.dynamics['T'] * self.dynamics['sigma_turn']]  # Fifth row
+            [self.dynamics['bt'][0], 0.0, 0.0],
+            [self.dynamics['bt'][1], 0.0, 0.0],
+            [0.0, self.dynamics['bt'][0], 0.0],
+            [0.0, self.dynamics['bt'][1], 0.0],
+            [0.0, 0.0, self.dynamics['T'] * self.dynamics['sigma_turn']]
         ])
 
         # Calculate B (identity matrix with size v_dim)
@@ -65,9 +63,7 @@ class DynamicModel:
         self.dynamics['Q'] = np.dot(self.dynamics['B'], self.dynamics['B'].T)
 
     def initialize_birth_model(self):
-        """
-        Initialize birth model parameters.
-        """
+        """Initialize birth model parameters."""
         birth = []
         positions = [
             [-1500, 0, 250, 0, 0],
@@ -75,6 +71,7 @@ class DynamicModel:
             [250, 0, 750, 0, 0],
             [1000, 0, 1500, 0, 0]
         ]
+        
         B_diag = np.diag([50, 50, 50, 50, 6*(np.pi/180)])
         P = np.dot(B_diag, B_diag)
         
@@ -92,39 +89,30 @@ class DynamicModel:
         return birth
 
     def initialize_sensors(self, detect_prob, clutter_rate):
-        """
-        Initialize sensor parameters.
-        """
+        """Initialize sensor parameters."""
         sensors = []
-        idx = 0
-        pdf_c = self.args.pdf_c
-        range_c_1 = np.array(self.args.range_c_1).reshape(2, 2)
-        range_c_2 = np.array(self.args.range_c_2).reshape(2, 2)
-        D = np.diag(self.args.D)
-        R = np.dot(D, D)
+        pdf_c = 1/(2*np.pi)
+        range_c = np.array([0, 2*np.pi])
+        D = self.args.bearing_D
+        R = D*D
         w_dim = self.args.z_dim
 
+        # Sensor positions
         positions = [
-            [-2000, 0],
-            [2000, 0],
-            [2000, 2000],
-            [-2000, 2000]
+            [-2000, 0],    # bottom left
+            [2000, 0],     # bottom right
+            [2000, 2000],  # top right
+            [-2000, 2000], # top left
+            [0, 2000],     # top middle
+            [0, 0]         # bottom middle
         ]
-        velocities = [
-            [0, 0],
-            [0, 0],
-            [0, -10],
-            [10, 0]
-        ]
-        ranges = [range_c_1, range_c_2, range_c_2, range_c_1]
-        
-        for pos, vel, rng in zip(positions, velocities, ranges):
+
+        for pos in positions:
             sensor = {
-                'type': 'brg_rng',
+                'type': 'brg',
                 'z_dim': self.args.z_dim,
                 'w_dim': w_dim,
                 'X': np.array(pos),
-                'v': np.array(vel),
                 'D': D,
                 'R': R,
                 'P_D_rng': detect_prob,
@@ -132,10 +120,9 @@ class DynamicModel:
                 'Q_D': 1 - np.mean(detect_prob),
                 'lambda_c_rng': clutter_rate,
                 'lambda_c': np.mean(clutter_rate),
-                'range_c': rng,
+                'range_c': range_c,
                 'pdf_c': pdf_c
             }
             sensors.append(sensor)
-            idx += 1
-        
+
         return sensors
