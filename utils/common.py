@@ -37,11 +37,15 @@ def load_configurations(args, writer):
     if args.verbose:
         print("\n===== Configurations =====")
         for key, value in vars(args).items():
+            if key == 'scenario_params':
+                continue
             print(f"{key}: {value}")
     
     # Format the argument summary for TensorBoard with markdown-style table
     arg_summary = "| **Parameter** | **Value** |\n|---|---|\n"
     for key, value in vars(args).items():
+        if key == 'scenario_params':
+            continue
         arg_summary += f"| {key} | {value} |\n"
 
     # Log the argument summary to TensorBoard

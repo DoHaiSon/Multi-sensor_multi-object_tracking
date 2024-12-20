@@ -2,6 +2,7 @@ import argparse
 import os
 import datetime
 import numpy as np  
+import importlib
 
 def str2bool(v):
     """Convert string to boolean."""
@@ -45,6 +46,9 @@ def get_args():
     parser.add_argument('--D', type=float, nargs=2, default=[2*np.pi/180, 10], help='Diagonal elements for D matrix')
     parser.add_argument('--CT', default=True, type=str2bool, help='Use Constant Turn (True) or Constant Velocity (False) model')
 
+    # Generate truth parameters
+    parser.add_argument('--scenario', type=str, default='scenario1', help='Scenario file name in /examples folder (default: scenario1)')
+
     # Running parameters
     parser.add_argument('--verbose', default=True, type=str2bool, help='Enable verbose output')
     parser.add_argument('--log_dir', type=str, help='Directory to save logs (auto-generated if not provided)')
@@ -66,4 +70,11 @@ def get_args():
         os.makedirs(log_dir, exist_ok=True)
         args.log_dir = log_dir
 
+    # Load scenario
+    try:
+        scenario_module = importlib.import_module(f'examples.{args.scenario}')
+        args.scenario_params = scenario_module.get_scenario()
+    except ImportError:
+        raise ValueError(f"Scenario '{args.scenario}' not found in examples folder")
+    
     return args
