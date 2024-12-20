@@ -164,13 +164,16 @@ def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer
         end_k: End time step
         writer: tensorboardX SummaryWriter
     """
-    import cv2
+    from io import BytesIO
+    from PIL import Image
+    import gc
 
     frames = []
     sensor_colors = ['r', 'g', 'b', 'm']  # Colors for each sensor
     
     for k in range(start_k, end_k):
-        fig, ax = plt.subplots(figsize=(10, 10))
+        fig = plt.figure(figsize=(10, 10), dpi=250)
+        ax = plt.gca()
         
         # Plot ground truth
         if truth['N'][k] > 0:
@@ -213,22 +216,24 @@ def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer
         ax.set_title(f'Time Step {k}')
         ax.legend()
         
-        # Convert plot to numpy array
-        fig.canvas.draw()
-        frame = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-        frame = frame.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-        # Convert RGB to BGR for OpenCV
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        # Convert plot to image
+        buf = BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        image = Image.open(buf)
+        frame = np.array(image)
         frames.append(frame)
-
+        buf.close()
         plt.close(fig)
 
-    height, width = frames[0].shape[:2]
-    video_path = os.path.join(args.log_dir, f'measurements_{start_k}_{end_k}.mp4')
-    
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(video_path, fourcc, 5.0, (width, height))
-    
-    for frame in frames:
-        out.write(frame)
-    out.release()
+    # Convert frames to video format: [T, C, H, W]
+    video = np.stack(frames)  # [T, H, W, C]
+    video = video.transpose((0, 3, 1, 2))  # [T, C, H, W]
+
+    # Log video to TensorBoardX
+    writer.add_video('Measurements', video[np.newaxis], fps=5.0)
+
+    # Clean up frames and video
+    del frames
+    del video
+    gc.collect()  # Trigger garbage collection to free memory

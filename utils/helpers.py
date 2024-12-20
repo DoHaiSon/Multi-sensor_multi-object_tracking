@@ -32,7 +32,7 @@ def log_params(args, model, writer):
             value_str = str(value)
         arg_summary += f"| {key} | {value_str} |\n"
     
-    writer.add_text('Survival/death parameters', arg_summary)
+    writer.add_text('Survival and Death parameters', arg_summary)
 
     # Log birth model parameters
     if not args.fixed_birth:

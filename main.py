@@ -1,6 +1,6 @@
 import os, sys
 import numpy as np
-from torch.utils.tensorboard import SummaryWriter
+from tensorboardX import SummaryWriter
 
 from config import get_args 
 from utils.common import set_seed, load_configurations, select_model
