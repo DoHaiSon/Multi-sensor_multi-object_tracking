@@ -5,7 +5,7 @@ def gen_new_state(args , model, target_state, noise_type):
     Generate new state based on the model and given noise type.
 
     Parameters:
-    model (dict): Dictionary containing model parameters including 'B', 'B2', and 'T'.
+    model (dict): Dictionary containing model parameters
     target_state (np.ndarray): Current state of the target.
     noise_type (str): Type of noise to apply ('noise' or 'noiseless').
 

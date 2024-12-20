@@ -5,6 +5,7 @@ from torch.utils.tensorboard import SummaryWriter
 from config import get_args 
 from utils.common import set_seed, load_configurations, select_model
 from utils.generate_truth import gen_truth, plot_truth
+from utils.generate_measurements import gen_measurements, plot_measurements
 
 if __name__ == '__main__':
     args = get_args()
@@ -22,7 +23,13 @@ if __name__ == '__main__':
     # Generate ground truth
     truth = gen_truth(args, model.dynamics)
 
-    # Visulize ground truth
-    plot_truth(truth, 1, args.K, writer)
+    # Visualize ground truth
+    plot_truth(truth, 0, args.K, writer)
+
+    # Generate measurements
+    measurements = gen_measurements(args, model.sensors, truth)
+
+    # Visualize measurements
+    plot_measurements(args, truth, measurements, model.sensors, 0, args.K, writer)
 
     writer.close()

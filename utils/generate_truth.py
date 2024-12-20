@@ -65,7 +65,7 @@ def plot_truth(truth, t1, t2, writer, global_step=0):
     
     # If time window specified, slice the tracks
     if t2 is not None:
-        X_track = X_track[:, t1-1:t2, :]  
+        X_track = X_track[:, t1:t2, :]  
     
     # Plot each track
     for i in range(X_track.shape[2]):
