@@ -20,6 +20,7 @@ def get_args():
                         choices=['Dynamic', 'Brg', 'Brg_rng'], help='Model to use for generating data')
     parser.add_argument('--P_D', default=0.95, type=float, help='Probability of detection')
     parser.add_argument('--lambda_c', default=10, type=float, help='Average number of clutter per frame')
+    parser.add_argument('--K', default=100, type=int, help='length of data/number of scans')
 
     # Dynamic parameters
     parser.add_argument('--x_dim', type=int, default=5, help='Dimension of state vector x (x, v_x, y, v_y, omega)')
@@ -42,6 +43,7 @@ def get_args():
     parser.add_argument('--range_c_1', type=float, nargs=4, default=[-np.pi/2, np.pi/2, 0, 4000], help='Range clutter 1')
     parser.add_argument('--range_c_2', type=float, nargs=4, default=[np.pi/2, 3*np.pi/2, 0, 4000], help='Range clutter 2')
     parser.add_argument('--D', type=float, nargs=2, default=[2*np.pi/180, 10], help='Diagonal elements for D matrix')
+    parser.add_argument('--CT', default=True, type=str2bool, help='Use Constant Turn (True) or Constant Velocity (False) model')
 
     # Running parameters
     parser.add_argument('--verbose', default=True, type=str2bool, help='Enable verbose output')

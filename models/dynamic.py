@@ -47,15 +47,22 @@ class DynamicModel:
         """
         Calculate noise-related variables in the dynamics dictionary.
         """
+        # Calculate bt (2x1 vector)
         self.dynamics['bt'] = self.dynamics['sigma_vel'] * np.array([(self.dynamics['T'] ** 2) / 2, self.dynamics['T']])
+
+        # Calculate B2 (5x3 matrix) correctly matching MATLAB structure
         self.dynamics['B2'] = np.array([
-            [self.dynamics['bt'][0], 0, 0, 0],
-            [0, self.dynamics['bt'][1], 0, 0],
-            [0, 0, self.dynamics['bt'][0], 0],
-            [0, 0, 0, self.dynamics['bt'][1]],
-            [0, 0, 0, self.dynamics['T'] * self.dynamics['sigma_turn']]
+            [self.dynamics['bt'][0], 0.0, 0.0],             # First row
+            [self.dynamics['bt'][1], 0.0, 0.0],             # Second row
+            [0.0, self.dynamics['bt'][0], 0.0],             # Third row
+            [0.0, self.dynamics['bt'][1], 0.0],             # Fourth row
+            [0.0, 0.0, self.dynamics['T'] * self.dynamics['sigma_turn']]  # Fifth row
         ])
+
+        # Calculate B (identity matrix with size v_dim)
         self.dynamics['B'] = np.eye(self.dynamics['v_dim'])
+        
+        # Calculate Q
         self.dynamics['Q'] = np.dot(self.dynamics['B'], self.dynamics['B'].T)
 
     def initialize_birth_model(self):
