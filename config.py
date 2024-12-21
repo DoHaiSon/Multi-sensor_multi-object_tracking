@@ -17,7 +17,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Multi-Sensor Multi-Object Tracking with Random Finite Set Theory')
 
     # Model parameters
-    parser.add_argument('--model', default='Brg_rng', type=str,
+    parser.add_argument('--model', default='Basic', type=str,
                         choices=['Basic', 'Brg', 'Brg_rng'], help='Model to use for generating data')
     parser.add_argument('--P_D', default=0.95, type=float, help='Probability of detection')
     parser.add_argument('--lambda_c', default=10, type=float, help='Average number of clutter per frame')
@@ -55,6 +55,7 @@ def get_args():
 
     # Running parameters
     parser.add_argument('--verbose', default=True, type=str2bool, help='Enable verbose output')
+    parser.add_argument('--enable_logging', type=bool, default=True, help='Enable/disable logging and log directory creation')
     parser.add_argument('--log_dir', type=str, help='Directory to save logs (auto-generated if not provided)')
 
     # Parse the arguments
@@ -64,15 +65,16 @@ def get_args():
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     args.current_time = current_time
 
-    if args.log_dir is None:  # Create log directory if not provided
-        default_log_dir = os.path.join('logs', f'run_{current_time}')
-        os.makedirs(default_log_dir, exist_ok=True)
-        args.log_dir = default_log_dir  # Assign default log directory to args.log_dir
-    else:
-        # If log_dir is provided, ensure it doesn't duplicate run names
-        log_dir = os.path.join('logs', args.log_dir)
-        os.makedirs(log_dir, exist_ok=True)
-        args.log_dir = log_dir
+    if  args.enable_logging:
+        if args.log_dir is None:  # Create log directory if not provided
+            default_log_dir = os.path.join('logs', f'run_{current_time}')
+            os.makedirs(default_log_dir, exist_ok=True)
+            args.log_dir = default_log_dir  # Assign default log directory to args.log_dir
+        else:
+            # If log_dir is provided, ensure it doesn't duplicate run names
+            log_dir = os.path.join('logs', args.log_dir)
+            os.makedirs(log_dir, exist_ok=True)
+            args.log_dir = log_dir
 
     # Load scenario
     try:
