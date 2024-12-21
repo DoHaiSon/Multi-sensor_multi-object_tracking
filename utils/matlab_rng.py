@@ -19,6 +19,34 @@ class Matlab_RNG:
         if seed is not None:
             self.eng.eval(f'rng({seed})', nargout=0)
 
+    def rand(self, *args):
+        """
+        Generate uniformly distributed random numbers using MATLAB's rand.
+
+        Parameters:
+        -----------
+        *args : int or tuple
+            Shape of output array. Can be:
+            - No args: returns single value
+            - Single number n: returns square matrix (n,n)
+            - Two numbers m,n: returns matrix (m,n)
+            - Tuple (m,n): returns matrix (m,n)
+        """
+        if len(args) > 0:
+            self._check_dimensions(*args)
+        if len(args) == 0:
+            return float(self.eng.rand())
+        elif len(args) == 1:
+            if isinstance(args[0], (tuple, list)):
+                m, n = args[0]
+                return np.array(self.eng.rand(float(m), float(n)))
+            # Single number n -> return (n,n) square matrix
+            n = args[0]
+            return np.array(self.eng.rand(float(n), float(n)))
+        else:
+            m, n = args
+            return np.array(self.eng.rand(float(m), float(n)))
+
     def randn(self, *args):
         """
         Generate standard normal random numbers using MATLAB's randn.
@@ -27,61 +55,30 @@ class Matlab_RNG:
         Parameters:
         -----------
         *args : tuple of int
-            Shape of output array. Can be (m,n) or m,n
-
-        Returns:
-        --------
-        np.ndarray
-            Array of random numbers with specified shape
+            Shape of output array. Can be:
+            - No args: returns single value
+            - Single number n: returns square matrix (n,n)
+            - Two numbers m,n: returns matrix (m,n)
+            - Tuple (m,n): returns matrix (m,n)
         """
-        if len(args) == 1 and isinstance(args[0], (tuple, list)):
-            m, n = args[0]
+        if len(args) > 0:
+            self._check_dimensions(*args)
+        if len(args) == 0:
+            return float(self.eng.randn())
+        elif len(args) == 1:
+            if isinstance(args[0], (tuple, list)):
+                m, n = args[0]
+            else:
+                # If single number n is provided, return square matrix (n,n)
+                # to match MATLAB behavior
+                return np.array(self.eng.randn(float(args[0]), float(args[0])))
         else:
             m, n = args
         return np.array(self.eng.randn(float(m), float(n)))
 
-    def rand(self, *args):
-        """
-        Generate uniformly distributed random numbers using MATLAB's rand.
-        Equivalent to np.random.rand()
-
-        Parameters:
-        -----------
-        *args : tuple of int
-            Shape of output array. Can be (m,n) or m,n
-
-        Returns:
-        --------
-        np.ndarray
-            Array of random numbers with specified shape
-        """
-        if len(args) == 1 and isinstance(args[0], (tuple, list)):
-            m, n = args[0]
-        else:
-            m, n = args
-        return np.array(self.eng.rand(float(m), float(n)))
-
-    def poisson(self, lam):
-        """
-        Generate random numbers from Poisson distribution using MATLAB's poissrnd.
-        Equivalent to np.random.poisson()
-
-        Parameters:
-        -----------
-        lam : float
-            The expected number of events occurring (lambda parameter)
-
-        Returns:
-        --------
-        int
-            Random number from Poisson distribution
-        """
-        return int(self.eng.poissrnd(float(lam)))
-
-    def normal(self, mu, sigma, size=None):
+    def normal(self, mu, sigma, *args):
         """
         Generate random numbers from normal distribution using MATLAB's normrnd.
-        Equivalent to np.random.normal()
 
         Parameters:
         -----------
@@ -89,23 +86,34 @@ class Matlab_RNG:
             Mean of the distribution
         sigma : float
             Standard deviation of the distribution
-        size : tuple, optional
-            Output shape. Default is None (single value)
-
-        Returns:
-        --------
-        np.ndarray or float
-            Random samples from normal distribution
+        *args : int or tuple, optional
+            Shape of output array. Can be:
+            - No args: returns single value
+            - Single number n: returns square matrix (n,n)
+            - Two numbers m,n: returns matrix (m,n)
+            - Tuple (m,n): returns matrix (m,n)
         """
-        if size is None:
+        # Check if sigma is positive
+        if not isinstance(sigma, (int, float, np.integer, np.floating)):
+            raise TypeError("Standard deviation must be a number")
+        if sigma <= 0:
+            raise ValueError("Standard deviation must be positive")
+        
+        if len(args) == 0:
             return float(self.eng.normrnd(float(mu), float(sigma)))
-        m, n = size
+        elif len(args) == 1:
+            if isinstance(args[0], (tuple, list)):
+                m, n = args[0]
+            else:
+                # Single number n, return square matrix (n,n)
+                return np.array(self.eng.normrnd(float(mu), float(sigma), float(args[0]), float(args[0])))
+        else:
+            m, n = args
         return np.array(self.eng.normrnd(float(mu), float(sigma), float(m), float(n)))
 
-    def uniform(self, low, high, size=None):
+    def uniform(self, low, high, *args):
         """
         Generate random numbers from uniform distribution using MATLAB's unifrnd.
-        Equivalent to np.random.uniform()
 
         Parameters:
         -----------
@@ -113,46 +121,96 @@ class Matlab_RNG:
             Lower boundary of output interval
         high : float
             Upper boundary of output interval
-        size : tuple, optional
-            Output shape. Default is None (single value)
-
-        Returns:
-        --------
-        np.ndarray or float
-            Random samples from uniform distribution
+        *args : int or tuple, optional
+            Shape of output array. Can be:
+            - No args: returns single value
+            - Single number n: returns square matrix (n,n)
+            - Two numbers m,n: returns matrix (m,n)
+            - Tuple (m,n): returns matrix (m,n)
         """
-        if size is None:
+        # Check if boundaries are valid numbers
+        if not isinstance(low, (int, float, np.integer, np.floating)) or \
+        not isinstance(high, (int, float, np.integer, np.floating)):
+            raise TypeError("Boundaries must be numbers")
+        
+        # Check if high > low
+        if high <= low:
+            raise ValueError("Upper bound must be greater than lower bound")
+    
+        if len(args) == 0:
             return float(self.eng.unifrnd(float(low), float(high)))
-        m, n = size
+        elif len(args) == 1:
+            if isinstance(args[0], (tuple, list)):
+                m, n = args[0]
+            else:
+                # Single number n, return square matrix (n,n)
+                return np.array(self.eng.unifrnd(float(low), float(high), float(args[0]), float(args[0])))
+        else:
+            m, n = args
         return np.array(self.eng.unifrnd(float(low), float(high), float(m), float(n)))
 
     def randi(self, imax, *args):
         """
         Generate random integers using MATLAB's randi.
-        Equivalent to np.random.randint()
 
         Parameters:
         -----------
         imax : int
             Upper bound of random integers (inclusive)
-        *args : tuple of int
-            Shape of output array. Can be (m,n) or m,n
-
-        Returns:
-        --------
-        np.ndarray
-            Array of random integers with specified shape
+        *args : int or tuple, optional
+            Shape of output array. Can be:
+            - No args: returns single value
+            - Single number n: returns square matrix (n,n)
+            - Two numbers m,n: returns matrix (m,n)
+            - Tuple (m,n): returns matrix (m,n)
         """
-        if len(args) == 1 and isinstance(args[0], (tuple, list)):
-            m, n = args[0]
+        if len(args) > 0:
+            self._check_dimensions(*args)
+        if len(args) == 0:
+            return int(self.eng.randi(float(imax)))
+        elif len(args) == 1:
+            if isinstance(args[0], (tuple, list)):
+                m, n = args[0]
+            else:
+                # Single number n, return square matrix (n,n)
+                return np.array(self.eng.randi(float(imax), float(args[0]), float(args[0])))
         else:
             m, n = args
         return np.array(self.eng.randi(float(imax), float(m), float(n)))
 
+    def poisson(self, lam, *args):
+        """
+        Generate random numbers from Poisson distribution using MATLAB's poissrnd.
+
+        Parameters:
+        -----------
+        lam : float
+            The expected number of events occurring (lambda parameter)
+        *args : int or tuple, optional
+            Shape of output array. Can be:
+            - No args: returns single value
+            - Single number n: returns square matrix (n,n)
+            - Two numbers m,n: returns matrix (m,n)
+            - Tuple (m,n): returns matrix (m,n)
+        """
+        if len(args) > 0:
+            self._check_dimensions(*args)
+        if len(args) == 0:
+            return int(self.eng.poissrnd(float(lam)))
+        elif len(args) == 1:
+            if isinstance(args[0], (tuple, list)):
+                m, n = args[0]
+            else:
+                # Single number n, return square matrix (n,n)
+                return np.array(self.eng.poissrnd(float(lam), float(args[0]), float(args[0])))
+        else:
+            m, n = args
+        return np.array(self.eng.poissrnd(float(lam), float(m), float(n)))
+
     def randperm(self, n):
         """
         Generate random permutation using MATLAB's randperm.
-        Equivalent to np.random.permutation()
+        Note: randperm only takes one argument in MATLAB.
 
         Parameters:
         -----------
@@ -162,11 +220,26 @@ class Matlab_RNG:
         Returns:
         --------
         np.ndarray
-            Array of permuted numbers from 1 to n
+            Array of permuted numbers from 1 to n with shape (1,n) to match MATLAB
         """
-        return np.array(self.eng.randperm(float(n)))
+        # Check if n is positive integer
+        if not isinstance(n, (int, np.integer)) or n <= 0:
+            raise ValueError("n must be a positive integer")
+        
+        # Call MATLAB's randperm and keep the shape (1,n) to match MATLAB
+        return np.array(self.eng.randperm(float(n)), dtype=float)[0]  
 
     def __del__(self):
         """Cleanup: close MATLAB engine"""
         if hasattr(self, 'eng'):
             self.eng.quit()
+
+    def _check_dimensions(self, *args):
+        """Helper function to validate dimensions"""
+        for arg in args:
+            if not isinstance(arg, (int, float, np.integer, np.floating)):
+                raise ValueError("Dimensions must be numeric")
+            if isinstance(arg, (float, np.floating)) and not arg.is_integer():
+                raise ValueError("Dimensions must be integers")
+            if arg < 0:
+                raise ValueError("Dimensions must be non-negative")

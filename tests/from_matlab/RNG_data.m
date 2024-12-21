@@ -1,40 +1,58 @@
-% Set random seed
-rng(2808);
-
-% Test cases with different sizes and parameters
+% Initialize test data structure
 test_data = struct();
 
 % Test randn
-test_data.randn_1 = randn(1, 1);      % Single value
-test_data.randn_2 = randn(3, 2);      % Matrix
-test_data.randn_3 = randn(5, 1);      % Column vector
+rng(2808);  % Reset seed before randn tests
+test_data.randn_1 = randn();          % Single value (no args)
+test_data.randn_2 = randn(1);         % Single arg -> (n,1) vector 
+test_data.randn_3 = randn(3, 2);      % Matrix (m,n)
+test_data.randn_4 = randn(5, 1);      % Column vector
+test_data.randn_5 = randn(1, 4);      % Row vector
 
 % Test rand
-test_data.rand_1 = rand(1, 1);        % Single value
-test_data.rand_2 = rand(2, 4);        % Matrix
-test_data.rand_3 = rand(4, 1);        % Column vector
+rng(2808);  % Reset seed before rand tests
+test_data.rand_1 = rand();            % Single value (no args)
+test_data.rand_2 = rand(3);           % Single arg -> (n,1) vector
+test_data.rand_3 = rand(2, 4);        % Matrix (m,n)
+test_data.rand_4 = rand(4, 1);        % Column vector
+test_data.rand_5 = rand(1, 3);        % Row vector
 
 % Test poisson
-lambda_vals = [5, 10, 15];
-test_data.poisson = zeros(1, length(lambda_vals));
-for i = 1:length(lambda_vals)
-    test_data.poisson(i) = poissrnd(lambda_vals(i));
-end
+rng(2808);  % Reset seed before poisson tests
+test_data.poisson_1 = poissrnd(5);              % Single value
+test_data.poisson_2 = poissrnd(10, 3, 1);       % Column vector
+test_data.poisson_3 = poissrnd(15, 1, 4);       % Row vector
+test_data.poisson_4 = poissrnd(7, 2, 3);        % Matrix
 
 % Test normal distribution
-test_data.normal_1 = normrnd(0, 1);           % Single value
-test_data.normal_2 = normrnd(2, 0.5, 3, 2);   % Matrix with mu=2, sigma=0.5
+rng(2808);  % Reset seed before normal tests
+test_data.normal_1 = normrnd(0, 1);             % Single value (no size args)
+test_data.normal_2 = normrnd(2, 0.5, 4);        % Single arg -> (n,1) vector
+test_data.normal_3 = normrnd(2, 0.5, 3, 2);     % Matrix (m,n)
+test_data.normal_4 = normrnd(-1, 2, 5, 1);      % Column vector
+test_data.normal_5 = normrnd(1, 0.1, 1, 3);     % Row vector
 
 % Test uniform distribution
-test_data.uniform_1 = unifrnd(-1, 1);         % Single value
-test_data.uniform_2 = unifrnd(0, 5, 2, 3);    % Matrix
+rng(2808);  % Reset seed before uniform tests
+test_data.uniform_1 = unifrnd(-1, 1);           % Single value (no size args)
+test_data.uniform_2 = unifrnd(0, 5, 3);         % Single arg -> (n,1) vector
+test_data.uniform_3 = unifrnd(0, 5, 2, 3);      % Matrix (m,n)
+test_data.uniform_4 = unifrnd(-2, 2, 4, 1);     % Column vector
+test_data.uniform_5 = unifrnd(0, 1, 1, 5);      % Row vector
 
 % Test randi
-test_data.randi_1 = randi(10);                % Single value up to 10
-test_data.randi_2 = randi(100, 3, 3);         % 3x3 matrix up to 100
+rng(2808);  % Reset seed before randi tests
+test_data.randi_1 = randi(10);                  % Single value (no size args)
+test_data.randi_2 = randi(10, 5);               % Single arg -> (n,1) vector
+test_data.randi_3 = randi(100, 3, 3);           % Matrix (m,n)
+test_data.randi_4 = randi(50, 4, 1);            % Column vector
+test_data.randi_5 = randi(20, 1, 6);            % Row vector
 
 % Test randperm
-test_data.randperm = randperm(10);            % Permutation of 1:10
+rng(2808);  % Reset seed before randperm tests
+test_data.randperm_1 = randperm(5);             % Small permutation
+test_data.randperm_2 = randperm(10);            % Medium permutation
+test_data.randperm_3 = randperm(15);            % Large permutation
 
 % Save test data
 save('matlab_rng_test_data.mat', 'test_data');
