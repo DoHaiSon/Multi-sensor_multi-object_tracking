@@ -13,7 +13,8 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
-def get_args():
+def define_args():
+    """Define all arguments"""
     parser = argparse.ArgumentParser(description='Multi-Sensor Multi-Object Tracking with Random Finite Set Theory')
 
     # Model parameters
@@ -58,14 +59,36 @@ def get_args():
     parser.add_argument('--enable_logging', type=bool, default=True, help='Enable/disable logging and log directory creation')
     parser.add_argument('--log_dir', type=str, help='Directory to save logs (auto-generated if not provided)')
 
+    return parser
+
+def get_args(args_list=None):
+    """
+    Get arguments from command line or from a list
+
+    Parameters:
+    -----------
+    args_list : list, optional
+        List of arguments to parse. If None, uses sys.argv[1:]
+        For testing, pass an empty list [] to get default values
+
+    Returns:
+    --------
+    args : argparse.Namespace
+        Parsed arguments
+    """
+    parser = define_args()
+
     # Parse the arguments
-    args = parser.parse_args()
+    if args_list is not None:
+        args = parser.parse_args(args_list)
+    else:
+        args = parser.parse_args()
 
     # Create a default log directory
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     args.current_time = current_time
 
-    if  args.enable_logging:
+    if args.enable_logging:
         if args.log_dir is None:  # Create log directory if not provided
             default_log_dir = os.path.join('logs', f'run_{current_time}')
             os.makedirs(default_log_dir, exist_ok=True)
@@ -81,7 +104,7 @@ def get_args():
         scenario_module = importlib.import_module(f'examples.{args.scenario}')
         args.scenario_params = scenario_module.get_scenario()
     except ImportError:
-        raise ValueError(f"Scenario '{args.scenario}' not found in examples folder")
+        raise ValueError(f"Scenario '{args.scenario}' not found in examples folder.")
     
     # Adjust z_dim based on model type
     if args.model == 'Brg' or args.model == 'Brg_rng':

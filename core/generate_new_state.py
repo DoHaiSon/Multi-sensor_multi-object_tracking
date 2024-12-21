@@ -1,6 +1,6 @@
 import numpy as np
 
-def gen_new_state(args , model, target_state, noise_type):
+def gen_new_state(args, model, target_state, noise_type, rng=None):
     """
     Generate new state based on the model and given noise type.
 
@@ -8,6 +8,8 @@ def gen_new_state(args , model, target_state, noise_type):
     model (dict): Dictionary containing model parameters
     target_state (np.ndarray): Current state of the target.
     noise_type (str): Type of noise to apply ('noise' or 'noiseless').
+    rng (Matlab_RNG): Random number generator, optional
+        If None, will use numpy's default random generator
 
     Returns:
     np.ndarray: New state with or without noise.
@@ -17,7 +19,11 @@ def gen_new_state(args , model, target_state, noise_type):
         target_state = target_state.reshape(-1, 1)
 
     if noise_type == 'noise':
-        V = np.dot(model['B'], np.random.randn(model['B'].shape[1], target_state.shape[1]))
+        # Use provided RNG if available
+        if rng is not None:
+            V = np.dot(model['B'], rng.randn(model['B'].shape[1], target_state.shape[1]))
+        else:
+            V = np.dot(model['B'], np.random.randn(model['B'].shape[1], target_state.shape[1]))
     elif noise_type == 'noiseless':
         V = np.zeros((model['B'].shape[0], target_state.shape[1]))
     else:

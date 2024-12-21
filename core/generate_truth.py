@@ -2,7 +2,19 @@ import numpy as np
 from core.generate_new_state import gen_new_state
 import matplotlib.pyplot as plt
 
-def gen_truth(args, model):
+def gen_truth(args, model, rng=None):
+    """
+    Generate ground truth tracks.
+    
+    Args:
+        args: Arguments containing scenario parameters
+        model: Model containing dynamics 
+        rng: Random number generator (Matlab_RNG instance), optional
+            If None, will use numpy's default random generator
+            
+    Returns:
+        truth: Dictionary containing ground truth data
+    """
     truth = {
         'K': args.K,  # length of data/number of scans
         'X': [None] * args.K,  # ground truth for states of targets
@@ -18,12 +30,12 @@ def gen_truth(args, model):
     tbirth  = args.scenario_params['tbirth']
     tdeath  = args.scenario_params['tdeath']
 
-    # Generate the tracks
+    # Generate the tracks 
     for targetnum in range(nbirths):
         targetstate = xstart[:, targetnum]
         for k in range(tbirth[targetnum] - 1, min(tdeath[targetnum], truth['K'])):
-
-            targetstate = gen_new_state(args, model, targetstate, 'noiseless')
+            # Pass rng to gen_new_state
+            targetstate = gen_new_state(args, model, targetstate, 'noiseless', rng=rng)
             
             if truth['X'][k] is None:
                 truth['X'][k] = targetstate.reshape(-1, 1)
