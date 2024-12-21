@@ -3,17 +3,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils.helpers import create_color_palette
 
-def gen_measurements(args, sensors, truth):
+def gen_measurements(args, sensors, truth, rng=None):
     """
     Generate measurements for all sensors.
     
     Args:
+        args: Arguments from parse_args
         sensors: List of sensor models
-        truth: Ground truth data
-        seed: Random seed (optional)
+        truth: Ground truth data. Contains:
+            - K: Number of time steps 
+            - X: List of target states for each time step
+            - N: Number of targets at each time step
+            - L: Number of births at each time step
+            - I: Track IDs at each time step
+            - W: Target weights at each time step
+        rng: Random number generator (Matlab_RNG instance), optional
+            If None, will use numpy's default random generator
     
     Returns:
         meas: Dictionary containing measurements and parameters
+            - K: Number of time steps
+            - Z: List of measurements for each sensor at each time step
+            - P_D: Detection probability for each sensor at each time step
+            - lambda_c: Expected number of clutter returns for each sensor
     """
     num_sensors = len(sensors)
     meas = {
@@ -29,14 +41,18 @@ def gen_measurements(args, sensors, truth):
                 # Get P_D (first-half, second-half)
                 P_D = sensors[s]['P_D_rng'][0]
                 
-                # Generate detection indicators
-                idx = np.random.rand(truth['N'][k]) <= P_D
+                # Generate detection indicators using provided RNG or numpy
+                if rng is not None:
+                    idx = rng.rand(1, truth['N'][k]) <= P_D  # Matlab_RNG
+                    idx = idx.flatten()
+                else:
+                    idx = np.random.rand(truth['N'][k]) <= P_D  # NumPy random
                 meas['P_D'][k,s] = P_D
                 
                 # Generate measurements for detected targets
                 if np.any(idx):
-                    meas['Z'][k][s] = gen_MS_observation(
-                        sensors, s, truth['X'][k][:, idx], 'noise')
+                    selected_cols = np.where(idx)[0] 
+                    meas['Z'][k][s] = gen_MS_observation(sensors, s, truth['X'][k][:, selected_cols], 'noise', rng)
                 else:
                     meas['Z'][k][s] = np.array([])
             
@@ -44,20 +60,32 @@ def gen_measurements(args, sensors, truth):
             lambda_c = sensors[s]['lambda_c_rng'][0] if k < 50 else sensors[s]['lambda_c_rng'][1]
             meas['lambda_c'][k,s] = lambda_c
             
-            # Generate clutter
-            N_c = np.random.poisson(lambda_c)
+            # Generate clutter using provided RNG or numpy
+            if rng is not None:
+                N_c = rng.poisson(lambda_c)  # Matlab_RNG
+            else:
+                N_c = np.random.poisson(lambda_c)  # NumPy random
+            
             if N_c > 0:
                 range_c = sensors[s]['range_c']
                 
                 # Handle both 1D and 2D range_c
                 if range_c.ndim == 1:
                     # For 1D measurements (e.g., bearing only)
-                    C = np.random.uniform(range_c[0], range_c[1], size=(1, N_c))
+                    if rng is not None:
+                        C = range_c[0] + (range_c[1] - range_c[0]) * rng.rand(1, N_c)  # Matlab_RNG
+                    else:
+                        C = np.random.uniform(range_c[0], range_c[1], size=(1, N_c))  # NumPy random
                 else:
                     # For 2D measurements (e.g., bearing-range)
-                    C = np.tile(range_c[:,0][:,None], [1, N_c]) + \
-                        np.diag(range_c @ [-1, 1]) @ \
-                        np.random.rand(sensors[s]['z_dim'], N_c)
+                    if rng is not None:
+                        C = np.tile(range_c[:,0][:,None], [1, N_c]) + \
+                            np.diag(range_c @ [-1, 1]) @ \
+                            rng.rand(sensors[s]['z_dim'], N_c)  # Matlab_RNG
+                    else:
+                        C = np.tile(range_c[:,0][:,None], [1, N_c]) + \
+                            np.diag(range_c @ [-1, 1]) @ \
+                            np.random.rand(sensors[s]['z_dim'], N_c)  # NumPy random
                 
                 # Combine target measurements and clutter
                 if len(meas['Z'][k][s]) > 0:
@@ -67,34 +95,49 @@ def gen_measurements(args, sensors, truth):
     
     return meas
 
-def gen_MS_observation(sensors, s, X, W):
+def gen_MS_observation(sensors, s, X, W, rng=None):
     """
     Generate observations for multiple sensors.
     
     Args:
-        sensors: List of sensor models, each model is a dictionary containing sensor parameters
+        sensors: List of sensor models, each model contains:
+            - type: Sensor type ('brg', 'rng', 'brg_rr', etc.)
+            - z_dim: Measurement dimension
+            - R: Measurement noise covariance
+            - X: Sensor position [x, y] or [x, y, z]
         s: Sensor index
-        X: Target states
+        X: Target states matrix (state_dim × num_targets)
         W: Noise type ('noise', 'noiseless') or noise matrix
+        rng: Random number generator (Matlab_RNG instance), optional
+            If None, will use numpy's default random generator
     
     Returns:
-        Z: Measurement matrix
+        Z: Measurement matrix (z_dim × num_targets)
     """
     if not isinstance(W, np.ndarray):
         if W == 'noise':
             # Handle noise generation based on measurement dimension
             if sensors[s]['z_dim'] == 1:
                 # For 1D measurements (e.g., bearing only)
-                W = np.random.normal(0, np.sqrt(sensors[s]['R']), (1, X.shape[1]))
+                if rng is not None:
+                    W = rng.normal(0, np.sqrt(sensors[s]['R']), (1, X.shape[1]))  # Matlab_RNG
+                else:
+                    W = np.random.normal(0, np.sqrt(sensors[s]['R']), (1, X.shape[1]))  # NumPy random
             else:
                 # For multi-dimensional measurements
-                W = np.random.multivariate_normal(
-                    mean=np.zeros(sensors[s]['z_dim']), 
-                    cov=sensors[s]['R'], 
-                    size=X.shape[1]).T
+                if rng is not None:
+                    W = rng.multivariate_normal(
+                        mean=np.zeros(sensors[s]['z_dim']), 
+                        cov=sensors[s]['R'], 
+                        size=X.shape[1]).T  # Matlab_RNG
+                else:
+                    W = np.random.multivariate_normal(
+                        mean=np.zeros(sensors[s]['z_dim']), 
+                        cov=sensors[s]['R'], 
+                        size=X.shape[1]).T  # NumPy random
         elif W == 'noiseless':
             W = np.zeros((sensors[s]['R'].shape[0], X.shape[1]))
-    
+
     if X.size == 0:
         return np.array([])
     

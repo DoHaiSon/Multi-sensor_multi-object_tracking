@@ -214,6 +214,63 @@ class Test_Matlab_RNG:
         assert self.rng.uniform(0, 1, 2, 4).shape == (2, 4)
         assert self.rng.randi(10, 3, 3).shape == (3, 3)
 
+    def test_multivariate_normal(self):
+        """Test multivariate normal with various input combinations"""
+        # Reset RNG for this specific test
+        self.rng = Matlab_RNG(seed=2808)
+        
+        # Test single sample, 2D standard normal
+        val = self.rng.multivariate_normal(np.zeros(2), np.eye(2))
+        np.testing.assert_array_almost_equal(val, self.matlab_data['mvnorm_1'].flatten())
+        
+        # Test single sample, 2D with correlation
+        mean = np.array([1, 2])
+        cov = np.array([[2, 0.5], [0.5, 1]])
+        val = self.rng.multivariate_normal(mean, cov)
+        np.testing.assert_array_almost_equal(val, self.matlab_data['mvnorm_2'].flatten())
+        
+        # Test multiple samples, 2D standard normal
+        val = self.rng.multivariate_normal(np.zeros(2), np.eye(2), size=3)
+        np.testing.assert_array_almost_equal(val, self.matlab_data['mvnorm_3'])
+        
+        # Test multiple samples, 3D
+        mean = np.array([1, 2, 3])
+        val = self.rng.multivariate_normal(mean, np.eye(3), size=4)
+        np.testing.assert_array_almost_equal(val, self.matlab_data['mvnorm_4'])
+        
+        # Test multiple samples, 1D
+        mean = np.array([0])
+        cov = np.array([[1]])
+        val = self.rng.multivariate_normal(mean, cov, size=5)
+        np.testing.assert_array_almost_equal(val, self.matlab_data['mvnorm_5'])
+
+        # Additional dimension tests
+        # Test output shape when size is not specified (should be 1D array)
+        val = self.rng.multivariate_normal(np.zeros(3), np.eye(3))
+        assert val.shape == (3,)
+
+        # Test output shape with size parameter
+        val = self.rng.multivariate_normal(np.zeros(2), np.eye(2), size=4)
+        assert val.shape == (4, 2)
+
+    def test_multivariate_normal_errors(self):
+        """Test error handling for invalid inputs in multivariate_normal"""
+        # Test non-matching dimensions between mean and covariance
+        with pytest.raises(ValueError):
+            self.rng.multivariate_normal(np.zeros(3), np.eye(2))
+
+        # Test non-square covariance matrix
+        with pytest.raises(ValueError):
+            self.rng.multivariate_normal(np.zeros(2), np.array([[1, 0], [0, 1], [0, 0]]))
+
+        # Test 1D input for covariance (must be 2D)
+        with pytest.raises(ValueError):
+            self.rng.multivariate_normal(np.zeros(2), np.array([1, 1]))
+
+        # Test invalid size parameter
+        with pytest.raises(ValueError):
+            self.rng.multivariate_normal(np.zeros(2), np.eye(2), size=-1)
+
     def teardown_method(self):
         """Cleanup after each test method"""
         if hasattr(self, 'rng'):

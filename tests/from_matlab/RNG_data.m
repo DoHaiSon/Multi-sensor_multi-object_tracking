@@ -54,5 +54,13 @@ test_data.randperm_1 = randperm(5);             % Small permutation
 test_data.randperm_2 = randperm(10);            % Medium permutation
 test_data.randperm_3 = randperm(15);            % Large permutation
 
+% Test multivariate normal distribution
+rng(2808);  % Reset seed before multivariate normal tests
+test_data.mvnorm_1 = mvnrnd([0; 0], eye(2));                   % Single sample, 2D std normal
+test_data.mvnorm_2 = mvnrnd([1; 2], [2 0.5; 0.5 1]);           % Single sample, 2D with correlation
+test_data.mvnorm_3 = mvnrnd([0; 0], eye(2), 3);                % Multiple samples, 2D std normal
+test_data.mvnorm_4 = mvnrnd([1; 2; 3], eye(3), 4);             % Multiple samples, 3D
+test_data.mvnorm_5 = mvnrnd([0], [1], 5);                      % Multiple samples, 1D
+
 % Save test data
 save('matlab_rng_test_data.mat', 'test_data');
