@@ -58,6 +58,8 @@ def define_args():
     parser.add_argument('--verbose', default=True, type=str2bool, help='Enable verbose output')
     parser.add_argument('--enable_logging', type=bool, default=True, help='Enable/disable logging and log directory creation')
     parser.add_argument('--log_dir', type=str, help='Directory to save logs (auto-generated if not provided)')
+    parser.add_argument('--use_seed', default=False, type=str2bool, help='Use fixed seed for reproducibility')
+    parser.add_argument('--seed', type=int, default=2808, help='Random seed value')
 
     return parser
 

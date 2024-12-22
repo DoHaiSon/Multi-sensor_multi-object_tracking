@@ -2,18 +2,32 @@ import numpy as np
 from core.generate_new_state import gen_new_state
 import matplotlib.pyplot as plt
 
-def gen_truth(args, model, rng=None):
+def gen_truth(args, model, rng=None, seed=None):
     """
     Generate ground truth tracks.
     
     Args:
         args: Arguments containing scenario parameters
-        model: Model containing dynamics 
-        rng: Random number generator (Matlab_RNG instance), optional
-            If None, will use numpy's default random generator
-            
+            K: length of data/number of scans
+            scenario_params: Dictionary containing:
+                nbirths: Number of targets to generate
+                wturn: Turn rate
+                xstart: Initial states matrix (state_dim × num_targets)
+                tbirth: Birth times for each target
+                tdeath: Death times for each target
+        model: Model containing dynamics parameters
+        rng: Random number generator for testing purposes (Matlab_RNG instance), optional
+            If provided, will use this instead of numpy's random generator
+        seed: Random seed for reproducible results with numpy.random, optional
+
     Returns:
-        truth: Dictionary containing ground truth data
+        truth: Dictionary containing:
+            K: length of data/number of scans
+            X: ground truth for states of targets
+            N: ground truth for number of targets
+            L: ground truth for labels of targets (k,i)
+            track_list: absolute index target identities (plotting)
+            total_tracks: total number of appearing tracks
     """
     truth = {
         'K': args.K,  # length of data/number of scans
@@ -34,8 +48,7 @@ def gen_truth(args, model, rng=None):
     for targetnum in range(nbirths):
         targetstate = xstart[:, targetnum]
         for k in range(tbirth[targetnum] - 1, min(tdeath[targetnum], truth['K'])):
-            # Pass rng to gen_new_state
-            targetstate = gen_new_state(args, model, targetstate, 'noiseless', rng=rng)
+            targetstate = gen_new_state(args, model, targetstate, 'noiseless', rng=rng, seed=seed)
             
             if truth['X'][k] is None:
                 truth['X'][k] = targetstate.reshape(-1, 1)

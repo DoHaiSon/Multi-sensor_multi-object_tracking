@@ -176,44 +176,6 @@ class Test_Matlab_RNG:
         val = self.rng.randperm(15)
         np.testing.assert_array_equal(val, self.matlab_data['randperm_3'][0])
 
-    def test_invalid_inputs(self):
-        """Test error handling for invalid inputs"""
-        with pytest.raises(Exception):
-            self.rng.rand(-1, 2)
-        with pytest.raises(Exception):
-            self.rng.randn(1.5, 2)
-        with pytest.raises(Exception):
-            self.rng.poisson(-5)
-        with pytest.raises(Exception):
-            self.rng.normal(0, -1)
-        with pytest.raises(Exception):
-            self.rng.uniform(2, 1)
-        with pytest.raises(Exception):
-            self.rng.randi(-10)
-        with pytest.raises(Exception):
-            self.rng.randperm(0)
-
-    def test_dimension_consistency(self):
-        """Test that output dimensions match input specifications"""
-        assert np.isscalar(self.rng.rand())
-        assert np.isscalar(self.rng.randn())
-        assert np.isscalar(self.rng.poisson(5))
-        assert np.isscalar(self.rng.normal(0, 1))
-        assert np.isscalar(self.rng.uniform(0, 1))
-        assert np.isscalar(self.rng.randi(10))
-
-        assert self.rng.rand(5).shape == (5, 5)
-        assert self.rng.randn(3).shape == (3, 3)
-        assert self.rng.normal(0, 1, 4).shape == (4, 4)
-        assert self.rng.uniform(0, 1, 6).shape == (6, 6)
-        assert self.rng.randi(10, 7).shape == (7, 7)
-
-        assert self.rng.rand(2, 3).shape == (2, 3)
-        assert self.rng.randn(4, 2).shape == (4, 2)
-        assert self.rng.normal(0, 1, 3, 2).shape == (3, 2)
-        assert self.rng.uniform(0, 1, 2, 4).shape == (2, 4)
-        assert self.rng.randi(10, 3, 3).shape == (3, 3)
-
     def test_multivariate_normal(self):
         """Test multivariate normal with various input combinations"""
         # Reset RNG for this specific test
@@ -270,6 +232,44 @@ class Test_Matlab_RNG:
         # Test invalid size parameter
         with pytest.raises(ValueError):
             self.rng.multivariate_normal(np.zeros(2), np.eye(2), size=-1)
+            
+    def test_invalid_inputs(self):
+        """Test error handling for invalid inputs"""
+        with pytest.raises(Exception):
+            self.rng.rand(-1, 2)
+        with pytest.raises(Exception):
+            self.rng.randn(1.5, 2)
+        with pytest.raises(Exception):
+            self.rng.poisson(-5)
+        with pytest.raises(Exception):
+            self.rng.normal(0, -1)
+        with pytest.raises(Exception):
+            self.rng.uniform(2, 1)
+        with pytest.raises(Exception):
+            self.rng.randi(-10)
+        with pytest.raises(Exception):
+            self.rng.randperm(0)
+
+    def test_dimension_consistency(self):
+        """Test that output dimensions match input specifications"""
+        assert np.isscalar(self.rng.rand())
+        assert np.isscalar(self.rng.randn())
+        assert np.isscalar(self.rng.poisson(5))
+        assert np.isscalar(self.rng.normal(0, 1))
+        assert np.isscalar(self.rng.uniform(0, 1))
+        assert np.isscalar(self.rng.randi(10))
+
+        assert self.rng.rand(5).shape == (5, 5)
+        assert self.rng.randn(3).shape == (3, 3)
+        assert self.rng.normal(0, 1, 4).shape == (4, 4)
+        assert self.rng.uniform(0, 1, 6).shape == (6, 6)
+        assert self.rng.randi(10, 7).shape == (7, 7)
+
+        assert self.rng.rand(2, 3).shape == (2, 3)
+        assert self.rng.randn(4, 2).shape == (4, 2)
+        assert self.rng.normal(0, 1, 3, 2).shape == (3, 2)
+        assert self.rng.uniform(0, 1, 2, 4).shape == (2, 4)
+        assert self.rng.randi(10, 3, 3).shape == (3, 3)
 
     def teardown_method(self):
         """Cleanup after each test method"""
