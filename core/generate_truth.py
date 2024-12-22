@@ -48,7 +48,13 @@ def gen_truth(args, model, rng=None, seed=None):
     for targetnum in range(nbirths):
         targetstate = xstart[:, targetnum]
         for k in range(tbirth[targetnum] - 1, min(tdeath[targetnum], truth['K'])):
-            targetstate = gen_new_state(args, model, targetstate, 'noiseless', rng=rng, seed=seed)
+            # Generate unique seed for each target and time step
+            if seed is not None:
+                current_seed = seed + targetnum*1000 + k
+            else:
+                current_seed = None
+
+            targetstate = gen_new_state(args, model, targetstate, 'noiseless', rng=rng, seed=current_seed)
             
             if truth['X'][k] is None:
                 truth['X'][k] = targetstate.reshape(-1, 1)

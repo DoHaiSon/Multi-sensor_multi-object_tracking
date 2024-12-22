@@ -19,16 +19,17 @@ class Test_Generate_Truth:
         
         # Get args from config
         cls.args = get_args([])
-        cls.args.model = 'Basic'  # Ensure using Basic model
         cls.args.enable_logging = False  # Disable logging for tests
         
         # Initialize model and RNG
         cls.writer = Logger(enable_logging=False)
         cls.model = Basic_Model(cls.args, cls.writer)
-        cls.rng = Matlab_RNG(seed=2808)
+        cls.rng = Matlab_RNG(seed=cls.args.seed)
 
         # Generate Python truth once for all tests
-        cls.python_truth = gen_truth(cls.args, cls.model.dynamics, rng=cls.rng)
+        seed = cls.args.seed if cls.args.use_seed else None
+        
+        cls.python_truth = gen_truth(cls.args, cls.model.dynamics, rng=cls.rng, seed=seed)
 
     def test_K_value(self):
         """Test if K (number of scans) matches"""
