@@ -18,7 +18,7 @@ class Matlab_RNG:
         self.eng = matlab.engine.start_matlab()
         if seed is not None:
             self.seed = seed
-            self.eng.eval(f'rng({seed})', nargout=0)
+            self._set_seed(self.seed)
 
     def _set_seed(self, seed):
         """Reset random seed to initial value"""
@@ -36,29 +36,23 @@ class Matlab_RNG:
             If provided, use this seed for this specific generation
         """
         if seed is not None:
-            current_state = self.eng.eval('rng', nargout=1)
             self._set_seed(seed)
 
-        try:
-            if len(args) > 0:
-                self._check_dimensions(*args)
-            if len(args) == 0:
-                result = float(self.eng.rand())
-            elif len(args) == 1:
-                if isinstance(args[0], (tuple, list)):
-                    m, n = args[0]
-                    result = np.array(self.eng.rand(float(m), float(n)))
-                else:
-                    n = args[0]
-                    result = np.array(self.eng.rand(float(n), float(n)))
-            else:
-                m, n = args
-                result = np.array(self.eng.rand(float(m), float(n)))
-        finally:
-            if seed is not None:
-                self.eng.eval(f"rng({current_state})", nargout=0)
+        if len(args) > 0:
+            self._check_dimensions(*args)
 
-        return result
+        if len(args) == 0:
+            return float(self.eng.rand())
+        elif len(args) == 1:
+            if isinstance(args[0], (tuple, list)):
+                m, n = args[0]
+                return np.array(self.eng.rand(float(m), float(n)))
+            else:
+                n = args[0]
+                return np.array(self.eng.rand(float(n), float(n)))
+        else:
+            m, n = args
+            return np.array(self.eng.rand(float(m), float(n)))
 
     def randn(self, *args, seed=None):
         """
@@ -72,28 +66,22 @@ class Matlab_RNG:
             If provided, use this seed for this specific generation
         """
         if seed is not None:
-            current_state = self.eng.eval('rng', nargout=1)
             self._set_seed(seed)
 
-        try:
-            if len(args) > 0:
-                self._check_dimensions(*args)
-            if len(args) == 0:
-                result = float(self.eng.randn())
-            elif len(args) == 1:
-                if isinstance(args[0], (tuple, list)):
-                    m, n = args[0]
-                    result = np.array(self.eng.randn(float(m), float(n)))
-                else:
-                    result = np.array(self.eng.randn(float(args[0]), float(args[0])))
-            else:
-                m, n = args
-                result = np.array(self.eng.randn(float(m), float(n)))
-        finally:
-            if seed is not None:
-                self.eng.eval(f"rng({current_state})", nargout=0)
+        if len(args) > 0:
+            self._check_dimensions(*args)
 
-        return result
+        if len(args) == 0:
+            return float(self.eng.randn())
+        elif len(args) == 1:
+            if isinstance(args[0], (tuple, list)):
+                m, n = args[0]
+                return np.array(self.eng.randn(float(m), float(n)))
+            else:
+                return np.array(self.eng.randn(float(args[0]), float(args[0])))
+        else:
+            m, n = args
+            return np.array(self.eng.randn(float(m), float(n)))
 
     def normal(self, mu, sigma, *args, seed=None):
         """
@@ -112,31 +100,25 @@ class Matlab_RNG:
         """
         if not isinstance(sigma, (int, float, np.integer, np.floating)):
             raise TypeError("Standard deviation must be a number")
+        
         if sigma <= 0:
             raise ValueError("Standard deviation must be positive")
 
         if seed is not None:
-            current_state = self.eng.eval('rng', nargout=1)
             self._set_seed(seed)
 
-        try:
-            if len(args) == 0:
-                result = float(self.eng.normrnd(float(mu), float(sigma)))
-            elif len(args) == 1:
-                if isinstance(args[0], (tuple, list)):
-                    m, n = args[0]
-                else:
-                    result = np.array(self.eng.normrnd(float(mu), float(sigma), 
-                                                     float(args[0]), float(args[0])))
+        if len(args) == 0:
+            return float(self.eng.normrnd(float(mu), float(sigma)))
+        elif len(args) == 1:
+            if isinstance(args[0], (tuple, list)):
+                m, n = args[0]
             else:
-                m, n = args
-                result = np.array(self.eng.normrnd(float(mu), float(sigma), 
-                                                 float(m), float(n)))
-        finally:
-            if seed is not None:
-                self.eng.eval(f"rng({current_state})", nargout=0)
-
-        return result
+                return np.array(self.eng.normrnd(float(mu), float(sigma), 
+                                                    float(args[0]), float(args[0])))
+        else:
+            m, n = args
+            return np.array(self.eng.normrnd(float(mu), float(sigma), 
+                                                float(m), float(n)))
 
     def uniform(self, low, high, *args, seed=None):
         """
@@ -161,27 +143,20 @@ class Matlab_RNG:
             raise ValueError("Upper bound must be greater than lower bound")
 
         if seed is not None:
-            current_state = self.eng.eval('rng', nargout=1)
             self._set_seed(seed)
 
-        try:
-            if len(args) == 0:
-                result = float(self.eng.unifrnd(float(low), float(high)))
-            elif len(args) == 1:
-                if isinstance(args[0], (tuple, list)):
-                    m, n = args[0]
-                else:
-                    result = np.array(self.eng.unifrnd(float(low), float(high), 
-                                                     float(args[0]), float(args[0])))
+        if len(args) == 0:
+            return float(self.eng.unifrnd(float(low), float(high)))
+        elif len(args) == 1:
+            if isinstance(args[0], (tuple, list)):
+                m, n = args[0]
             else:
-                m, n = args
-                result = np.array(self.eng.unifrnd(float(low), float(high), 
-                                                 float(m), float(n)))
-        finally:
-            if seed is not None:
-                self.eng.eval(f"rng({current_state})", nargout=0)
-
-        return result
+                return np.array(self.eng.unifrnd(float(low), float(high), 
+                                                    float(args[0]), float(args[0])))
+        else:
+            m, n = args
+            return np.array(self.eng.unifrnd(float(low), float(high), 
+                                                float(m), float(n)))
 
     def randi(self, imax, *args, seed=None):
         """
@@ -197,28 +172,22 @@ class Matlab_RNG:
             If provided, use this seed for this specific generation
         """
         if seed is not None:
-            current_state = self.eng.eval('rng', nargout=1)
             self._set_seed(seed)
 
-        try:
-            if len(args) > 0:
-                self._check_dimensions(*args)
-            if len(args) == 0:
-                result = int(self.eng.randi(float(imax)))
-            elif len(args) == 1:
-                if isinstance(args[0], (tuple, list)):
-                    m, n = args[0]
-                else:
-                    result = np.array(self.eng.randi(float(imax), 
-                                                   float(args[0]), float(args[0])))
-            else:
-                m, n = args
-                result = np.array(self.eng.randi(float(imax), float(m), float(n)))
-        finally:
-            if seed is not None:
-                self.eng.eval(f"rng({current_state})", nargout=0)
+        if len(args) > 0:
+            self._check_dimensions(*args)
 
-        return result
+        if len(args) == 0:
+            return int(self.eng.randi(float(imax)))
+        elif len(args) == 1:
+            if isinstance(args[0], (tuple, list)):
+                m, n = args[0]
+            else:
+                return np.array(self.eng.randi(float(imax), 
+                                                float(args[0]), float(args[0])))
+        else:
+            m, n = args
+            return np.array(self.eng.randi(float(imax), float(m), float(n)))
 
     def poisson(self, lam, *args, seed=None):
         """
@@ -234,28 +203,22 @@ class Matlab_RNG:
             If provided, use this seed for this specific generation
         """
         if seed is not None:
-            current_state = self.eng.eval('rng', nargout=1)
             self._set_seed(seed)
 
-        try:
-            if len(args) > 0:
-                self._check_dimensions(*args)
-            if len(args) == 0:
-                result = int(self.eng.poissrnd(float(lam)))
-            elif len(args) == 1:
-                if isinstance(args[0], (tuple, list)):
-                    m, n = args[0]
-                else:
-                    result = np.array(self.eng.poissrnd(float(lam), 
-                                                      float(args[0]), float(args[0])))
-            else:
-                m, n = args
-                result = np.array(self.eng.poissrnd(float(lam), float(m), float(n)))
-        finally:
-            if seed is not None:
-                self.eng.eval(f"rng({current_state})", nargout=0)
+        if len(args) > 0:
+            self._check_dimensions(*args)
 
-        return result
+        if len(args) == 0:
+            return int(self.eng.poissrnd(float(lam)))
+        elif len(args) == 1:
+            if isinstance(args[0], (tuple, list)):
+                m, n = args[0]
+            else:
+                return np.array(self.eng.poissrnd(float(lam), 
+                                                    float(args[0]), float(args[0])))
+        else:
+            m, n = args
+            return np.array(self.eng.poissrnd(float(lam), float(m), float(n)))
 
     def randperm(self, n, seed=None):
         """
@@ -272,64 +235,62 @@ class Matlab_RNG:
             raise ValueError("n must be a positive integer")
 
         if seed is not None:
-            current_state = self.eng.eval('rng', nargout=1)
             self._set_seed(seed)
 
-        try:
-            result = np.array(self.eng.randperm(float(n)), dtype=float)[0]
-        finally:
-            if seed is not None:
-                self.eng.eval(f"rng({current_state})", nargout=0)
-
-        return result
+        return np.array(self.eng.randperm(float(n)), dtype=float)[0]
     
     def multivariate_normal(self, mean, cov, size=None, seed=None):
         """
         Generate random samples from multivariate normal distribution using MATLAB's mvnrnd.
+        Works for both univariate (1D) and multivariate cases.
 
         Parameters:
         -----------
         mean : array_like
-            Mean vector of the distribution
+            Mean vector of the distribution. For 1D case, can be a scalar.
         cov : array_like
-            Covariance matrix of the distribution
+            Covariance matrix of the distribution. For 1D case, can be a scalar (variance).
         size : int or tuple, optional
             Number of samples to generate. If None, returns one sample.
         seed : int, optional
             If provided, this seed will be used for this specific random generation
-            The generator will be restored to its previous state after generation
 
         Returns:
         --------
         out : ndarray
-            Drawn samples from the multivariate normal distribution.
-            If size is None: shape is (len(mean),)
-            If size is int n: shape is (n, len(mean))
+            Drawn samples from the normal distribution.
         """
-        # Input validation
+        # Convert inputs to numpy arrays
         mean = np.asarray(mean)
         cov = np.asarray(cov)
 
+        # Handle 1D case
+        if np.isscalar(mean) or (mean.ndim == 1 and mean.size == 1):
+            mean = np.array([mean]).flatten()
+            cov = np.array([[cov]]) if np.isscalar(cov) else cov.reshape(1, 1)
+
+        # Input validation
         if not isinstance(mean, (np.ndarray, list, tuple)):
             raise TypeError("mean must be array_like")
         if not isinstance(cov, (np.ndarray, list, tuple)):
             raise TypeError("cov must be array_like")
 
-        # Check mean dimensions
-        if mean.ndim != 1:
-            raise ValueError("mean must be 1-dimensional")
+        # Make mean 1D if it isn't
+        if mean.ndim > 1:
+            mean = mean.flatten()
 
-        # Check covariance dimensions
-        if cov.ndim != 2:
-            raise ValueError("cov must be 2-dimensional")
-        
-        if cov.shape[0] != cov.shape[1]:
-            raise ValueError("cov must be square matrix")
+        # Ensure covariance is 2D
+        if cov.ndim == 0:  # scalar
+            cov = np.array([[cov]])
+        elif cov.ndim == 1:  # 1D array
+            cov = cov.reshape(1, 1)
 
         # Check compatibility of dimensions
         if mean.shape[0] != cov.shape[0]:
             raise ValueError(f"Incompatible dimensions: mean has length {mean.shape[0]}, "
                         f"cov has shape {cov.shape}")
+        if cov.shape[0] != cov.shape[1]:
+            raise ValueError("cov must be square matrix")
 
         # Check if size is valid
         if size is not None:
@@ -340,13 +301,12 @@ class Matlab_RNG:
             if isinstance(size, (tuple, list)) and any(s <= 0 for s in size):
                 raise ValueError("all elements in size must be positive")
 
-        # If seed is provided, save current state and set new seed
+        # Set seed if provided
         if seed is not None:
-            current_state = self.eng.eval('rng', nargout=1)
             self._set_seed(seed)
 
         try:
-            # Convert inputs to MATLAB format
+            # Convert to MATLAB format
             mean_matlab = matlab.double(mean.tolist())
             cov_matlab = matlab.double(cov.tolist())
             
@@ -356,26 +316,16 @@ class Matlab_RNG:
                 return result.flatten()
             else:
                 # Generate multiple samples
-                if isinstance(size, (int, np.integer)):
-                    n_samples = size
-                else:
-                    n_samples = np.prod(size)
-                
+                n_samples = size if isinstance(size, (int, np.integer)) else np.prod(size)
                 result = np.array(self.eng.mvnrnd(mean_matlab, cov_matlab, float(n_samples)))
                 
                 if isinstance(size, (tuple, list)):
-                    # Reshape if size is a tuple/list
                     result = result.reshape(size + (mean.shape[0],))
                 
                 return result
 
         except Exception as e:
             raise ValueError(f"MATLAB mvnrnd error: {str(e)}")
-        
-        finally:
-            # Restore previous state if seed was provided
-            if seed is not None:
-                self.eng.eval(f"rng({current_state})", nargout=0)
 
     def randperm(self, n, seed=None):
         """
@@ -401,17 +351,10 @@ class Matlab_RNG:
         
         # If seed is provided, save current state and set new seed
         if seed is not None:
-            current_state = self.eng.eval('rng', nargout=1)
             self._set_seed(seed)
 
-        try:
-            # Call MATLAB's randperm and keep the shape (1,n) to match MATLAB
-            return np.array(self.eng.randperm(float(n)), dtype=float)[0]
-        
-        finally:
-            # Restore previous state if seed was provided
-            if seed is not None:
-                self.eng.eval(f"rng({current_state})", nargout=0)
+        # Call MATLAB's randperm and keep the shape (1,n) to match MATLAB
+        return np.array(self.eng.randperm(float(n)), dtype=float)[0]
 
     def poisson(self, lam, *args, seed=None):
         """
@@ -434,28 +377,20 @@ class Matlab_RNG:
         if len(args) > 0:
             self._check_dimensions(*args)
 
-        # If seed is provided, save current state and set new seed
         if seed is not None:
-            current_state = self.eng.eval('rng', nargout=1)
             self._set_seed(seed)
 
-        try:
-            if len(args) == 0:
-                return int(self.eng.poissrnd(float(lam)))
-            elif len(args) == 1:
-                if isinstance(args[0], (tuple, list)):
-                    m, n = args[0]
-                else:
-                    # Single number n, return square matrix (n,n)
-                    return np.array(self.eng.poissrnd(float(lam), float(args[0]), float(args[0])))
+        if len(args) == 0:
+            return int(self.eng.poissrnd(float(lam)))
+        elif len(args) == 1:
+            if isinstance(args[0], (tuple, list)):
+                m, n = args[0]
             else:
-                m, n = args
-            return np.array(self.eng.poissrnd(float(lam), float(m), float(n)))
-
-        finally:
-            # Restore previous state if seed was provided
-            if seed is not None:
-                self.eng.eval(f"rng({current_state})", nargout=0)
+                # Single number n, return square matrix (n,n)
+                return np.array(self.eng.poissrnd(float(lam), float(args[0]), float(args[0])))
+        else:
+            m, n = args
+        return np.array(self.eng.poissrnd(float(lam), float(m), float(n)))
 
     def __del__(self):
         """Cleanup: close MATLAB engine"""
