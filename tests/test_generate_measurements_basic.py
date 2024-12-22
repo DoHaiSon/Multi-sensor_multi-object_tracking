@@ -16,6 +16,8 @@ class Test_Generate_Measurements:
         """Setup test class - prepare model, truth data and MATLAB RNG"""
         # Initialize args with Basic model
         cls.args = get_args([])
+        cls.args.model = 'Basic'    
+        cls.args.z_dim = 2
         cls.args.enable_logging = False
         
         # Initialize logger
@@ -25,13 +27,15 @@ class Test_Generate_Measurements:
         cls.model = select_model(cls.args, cls.writer)
         
         # Initialize MATLAB-compatible RNG
-        cls.rng = Matlab_RNG(seed=2808)
+        cls.rng = Matlab_RNG(seed=cls.args.seed)
+
+        seed = cls.args.seed if cls.args.use_seed else None
         
         # Generate ground truth using MATLAB RNG
-        cls.truth = gen_truth(cls.args, cls.model.dynamics, cls.rng)
+        cls.truth = gen_truth(cls.args, cls.model.dynamics, cls.rng, seed=seed)
         
         # Generate measurements using MATLAB RNG
-        cls.python_meas = gen_measurements(cls.args, cls.model.sensors, cls.truth, cls.rng)
+        cls.python_meas = gen_measurements(cls.args, cls.model.sensors, cls.truth, cls.rng, seed=seed)
         
         # Load MATLAB measurements data for comparison
         if cls.args.model == 'Basic':
