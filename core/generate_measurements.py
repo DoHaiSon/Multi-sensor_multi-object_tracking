@@ -106,11 +106,21 @@ def gen_measurements(args, sensors, truth, rng=None, seed=None):
                         C = np.tile(range_c[:,0][:,None], [1, N_c]) + \
                             np.diag(range_c @ [-1, 1]) @ \
                             np.random.rand(sensors[s]['z_dim'], N_c)  # NumPy random
-                
                 # Combine target measurements and clutter
                 if len(meas['Z'][k][s]) > 0:
+                    # Ensure both matrices have the same number of rows for hstack
+                    if isinstance(meas['Z'][k][s], np.ndarray):
+                        # If measurement is a vector, reshape it to a 2x1 matrix
+                        if meas['Z'][k][s].ndim == 1:
+                            meas['Z'][k][s] = meas['Z'][k][s].reshape(-1, 1)
+                        # If clutter is a vector, reshape it to match measurement dimension
+                        if C.ndim == 1:
+                            C = C.reshape(-1, 1)
                     meas['Z'][k][s] = np.hstack([meas['Z'][k][s], C])
                 else:
+                    # If no measurements, ensure clutter has correct shape
+                    if C.ndim == 1:
+                        C = C.reshape(-1, 1)
                     meas['Z'][k][s] = C
     
     return meas
@@ -138,26 +148,21 @@ def gen_MS_observation(sensors, s, X, W, rng=None, seed=None):
     """
     if not isinstance(W, np.ndarray):
         if W == 'noise':
-            # Handle noise generation based on measurement dimension
-            if sensors[s]['z_dim'] == 1:
-                # For 1D measurements (e.g., bearing only)
-                if rng is not None:
-                    W = rng.normal(0, np.sqrt(sensors[s]['R']), (1, X.shape[1]), seed=seed)  # Matlab_RNG
-                else:
-                    if seed is not None:
-                        np.random.seed(seed)
-                    W = np.random.normal(0, np.sqrt(sensors[s]['R']), (1, X.shape[1]))  # NumPy random
+            if rng is not None:
+                W = rng.multivariate_normal(
+                    mean=np.zeros(sensors[s]['z_dim']), 
+                    cov=sensors[s]['R'], 
+                    size=X.shape[1],
+                    seed=seed).T  # Matlab_RNG
             else:
-                # For multi-dimensional measurements
-                if rng is not None:
-                    W = rng.multivariate_normal(
-                        mean=np.zeros(sensors[s]['z_dim']), 
-                        cov=sensors[s]['R'], 
-                        size=X.shape[1],
-                        seed=seed).T  # Matlab_RNG
+                if seed is not None:
+                    np.random.seed(seed)
+                if np.isscalar(sensors[s]['R']) or sensors[s]['R'].size == 1:
+                    # For scalar covariance (e.g., bearing-only sensors)
+                    W = np.random.normal(0, np.sqrt(float(sensors[s]['R'])), 
+                                    size=(1, X.shape[1]))
                 else:
-                    if seed is not None:
-                        np.random.seed(seed)
+                    # For matrix covariance
                     W = np.random.multivariate_normal(
                         mean=np.zeros(sensors[s]['z_dim']), 
                         cov=sensors[s]['R'], 
@@ -170,73 +175,150 @@ def gen_MS_observation(sensors, s, X, W, rng=None, seed=None):
     
     sensor_type = sensors[s]['type']
     
-    if sensor_type == 'brg':
-        Z = np.arctan2(X[2,:] - sensors[s]['X'][1], 
-                      X[0,:] - sensors[s]['X'][0])
-        if isinstance(W, np.ndarray):
-            Z = Z + W[0] if W.shape[0] == 1 else Z + W
+    if sensor_type == 'brg':        # Bearing-only sensor
+        #! TODO: need to check arctan(y, x) vs arctan(x, y)
+        Z = np.arctan2(X[0,:] - sensors[s]['X'][0],     # x (first parameter in MATLAB)
+                       X[2,:] - sensors[s]['X'][1])     # y (second parameter in MATLAB)
+        
+        # Handle vector case for bearing-only measurements
+        if isinstance(W, np.ndarray) and W.ndim == 1:
+            Z = Z.flatten()
+        else:
+            Z = Z.reshape(1, -1)  # Ensure 2D for matrix case
+        Z = Z + W
         Z = np.mod(Z, 2*np.pi)
-        Z = Z.reshape(1, -1)  # Ensure 2D array shape (1, N)
-        
-    elif sensor_type == 'rng':
+
+    elif sensor_type == 'rng':      # Range-only sensor
         Z = np.sqrt((sensors[s]['X'][0] - X[0,:])**2 + 
-                    (sensors[s]['X'][1] - X[2,:])**2) + W
+                    (sensors[s]['X'][1] - X[2,:])**2)
+        # Handle vector case for range-only measurements
+        if isinstance(W, np.ndarray) and W.ndim == 1:
+            Z = Z.flatten()
+        else:
+            Z = Z.reshape(1, -1)  # Ensure 2D for matrix case
+        Z = Z + W
         
-    elif sensor_type == 'brg_rr':
+    elif sensor_type == 'brg_rr':       # Bearing and Range Rate sensors: Doppler radar systems, Air traffic control radar
         relpos = X[[0,2],:] - sensors[s]['X'][:,None]
         relvel = X[[1,3],:]
         rng = np.sqrt(np.sum(relpos**2, axis=0))
-        Z = np.zeros((2, X.shape[1]))
-        Z[0,:] = np.arctan2(relpos[0,:], relpos[1,:])
-        Z[1,:] = np.sum(relpos * relvel, axis=0) / rng
-        Z = Z + W
-        Z[0,:] = np.mod(Z[0,:], 2*np.pi)
         
-    elif sensor_type == 'pos':
-        Z = np.zeros((2, X.shape[1]))
-        Z[0:2,:] = X[[0,2],:]
+        if isinstance(W, np.ndarray) and W.ndim == 1:
+            # Vector case
+            Z = np.zeros(2)
+            Z[0] = np.arctan2(relpos[0,0], relpos[1,0])
+            Z[1] = np.sum(relpos[:,0] * relvel[:,0]) / rng[0]
+        else:
+            # Matrix case
+            Z = np.zeros((2, X.shape[1]))
+            Z[0,:] = np.arctan2(relpos[0,:], relpos[1,:])
+            Z[1,:] = np.sum(relpos * relvel, axis=0) / rng
+        
+        Z = Z + W
+        if Z.ndim > 1:
+            Z[0,:] = np.mod(Z[0,:], 2*np.pi)
+        else:
+            Z[0] = np.mod(Z[0], 2*np.pi)
+        
+    elif sensor_type == 'pos':      # x and y coordinates
+        if isinstance(W, np.ndarray) and W.ndim == 1:
+            # Vector case
+            Z = np.zeros(2)
+            Z[0:2] = X[[0,2],0]
+        else:
+            # Matrix case
+            Z = np.zeros((2, X.shape[1]))
+            Z[0:2,:] = X[[0,2],:]
         Z = Z + W
         
-    elif sensor_type == 'pos_3D':
-        Z = np.zeros((3, X.shape[1]))
-        Z[0:3,:] = X[[0,2,4],:]
+    elif sensor_type == 'pos_3D':       # x, y, and z coordinates
+        if isinstance(W, np.ndarray) and W.ndim == 1:
+            # Vector case
+            Z = np.zeros(3)
+            Z[0:3] = X[[0,2,4],0]
+        else:
+            # Matrix case
+            Z = np.zeros((3, X.shape[1]))
+            Z[0:3,:] = X[[0,2,4],:]
         Z = Z + W
         
-    elif sensor_type == 'brg_rng':
+    elif sensor_type == 'brg_rng':      # Bearing-range sensor
         relpos = X[[0,2],:] - sensors[s]['X'][:,None]
         rng = np.sqrt(np.sum(relpos**2, axis=0))
-        Z = np.zeros((2, X.shape[1]))
-        Z[0,:] = np.arctan2(relpos[1,:], relpos[0,:])
-        Z[1,:] = rng
-        Z = Z + W
-        Z[0,:] = np.mod(Z[0,:], 2*np.pi)
         
-    elif sensor_type == 'az_el_rng':
+        if isinstance(W, np.ndarray) and W.ndim == 1:
+            # Vector case
+            Z = np.zeros(2)
+            Z[0] = np.arctan2(relpos[1,0], relpos[0,0])
+            Z[1] = rng[0]
+        else:
+            # Matrix case
+            Z = np.zeros((2, X.shape[1]))
+            Z[0,:] = np.arctan2(relpos[1,:], relpos[0,:])
+            Z[1,:] = rng
+            
+        Z = Z + W
+        if Z.ndim > 1:
+            Z[0,:] = np.mod(Z[0,:], 2*np.pi)
+        else:
+            Z[0] = np.mod(Z[0], 2*np.pi)
+            
+    elif sensor_type == 'az_el_rng':        # Azimuth, Elevation, and Range sensor: 3D scanning LiDAR
         relpos = X[[0,2,5],:] - sensors[s]['X'][:,None]
         relvel = X[[1,3,6],:]
         rng = np.sqrt(np.sum(relpos**2, axis=0))
-        Z = np.zeros((4, X.shape[1]))
-        Z[0,:] = np.arctan2(relpos[0,:], relpos[1,:])
-        xy_rng = relpos[0:2,:]
-        xy_rng = np.sqrt(np.sum(xy_rng**2, axis=0))
-        Z[1,:] = np.arctan2(xy_rng, relpos[2,:])
-        Z[2,:] = rng
-        Z[3,:] = np.sum(relpos * relvel, axis=0) / rng
-        Z = Z + W
-        Z[0,:] = np.mod(Z[0,:] + np.pi, 2*np.pi) - np.pi  # azimuth
-        Z[1,:] = np.mod(Z[1,:] + np.pi, 2*np.pi) - np.pi  # elevation
         
-    elif sensor_type == 'brg_rng_rngrt':
+        if isinstance(W, np.ndarray) and W.ndim == 1:
+            # Vector case
+            Z = np.zeros(4)
+            xy_rng = relpos[0:2,0]
+            xy_rng = np.sqrt(np.sum(xy_rng**2))
+            Z[0] = np.arctan2(relpos[0,0], relpos[1,0])
+            Z[1] = np.arctan2(xy_rng, relpos[2,0])
+            Z[2] = rng[0]
+            Z[3] = np.sum(relpos[:,0] * relvel[:,0]) / rng[0]
+        else:
+            # Matrix case
+            Z = np.zeros((4, X.shape[1]))
+            xy_rng = relpos[0:2,:]
+            xy_rng = np.sqrt(np.sum(xy_rng**2, axis=0))
+            Z[0,:] = np.arctan2(relpos[0,:], relpos[1,:])
+            Z[1,:] = np.arctan2(xy_rng, relpos[2,:])
+            Z[2,:] = rng
+            Z[3,:] = np.sum(relpos * relvel, axis=0) / rng
+            
+        Z = Z + W
+        if Z.ndim > 1:
+            Z[0,:] = np.mod(Z[0,:] + np.pi, 2*np.pi) - np.pi
+            Z[1,:] = np.mod(Z[1,:] + np.pi, 2*np.pi) - np.pi
+        else:
+            Z[0] = np.mod(Z[0] + np.pi, 2*np.pi) - np.pi
+            Z[1] = np.mod(Z[1] + np.pi, 2*np.pi) - np.pi
+            
+    elif sensor_type == 'brg_rng_rngrt':        # Bearing, Range, and Range Rate sensor: Modern military tracking radar
         relpos = X[[0,2],:] - sensors[s]['X'][:,None]
         relvel = X[[1,3],:]
         rng = np.sqrt(np.sum(relpos**2, axis=0))
-        Z = np.zeros((3, X.shape[1]))
-        Z[0,:] = np.arctan2(relpos[0,:], relpos[1,:])
-        Z[1,:] = rng
-        Z[2,:] = np.sum(relpos * relvel, axis=0) / rng
-        Z = Z + W
-        Z[0,:] = np.mod(Z[0,:], 2*np.pi)
         
+        if isinstance(W, np.ndarray) and W.ndim == 1:
+            # Vector case
+            Z = np.zeros(3)
+            Z[0] = np.arctan2(relpos[0,0], relpos[1,0])
+            Z[1] = rng[0]
+            Z[2] = np.sum(relpos[:,0] * relvel[:,0]) / rng[0]
+        else:
+            # Matrix case
+            Z = np.zeros((3, X.shape[1]))
+            Z[0,:] = np.arctan2(relpos[0,:], relpos[1,:])
+            Z[1,:] = rng
+            Z[2,:] = np.sum(relpos * relvel, axis=0) / rng
+            
+        Z = Z + W
+        if Z.ndim > 1:
+            Z[0,:] = np.mod(Z[0,:], 2*np.pi)
+        else:
+            Z[0] = np.mod(Z[0], 2*np.pi)
+            
     return Z
 
 def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer):

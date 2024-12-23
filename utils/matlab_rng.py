@@ -246,86 +246,99 @@ class Matlab_RNG:
 
         Parameters:
         -----------
-        mean : array_like
-            Mean vector of the distribution. For 1D case, can be a scalar.
-        cov : array_like
-            Covariance matrix of the distribution. For 1D case, can be a scalar (variance).
+        mean : array_like or scalar
+            Mean of the distribution. For univariate case, it can be a scalar.
+            For multivariate case, it should be a 1-D array of shape (N,) where N is the dimension.
+        cov : array_like or scalar
+            Covariance matrix of the distribution.
+            For univariate case, it can be a scalar (variance).
+            For multivariate case, it should be a 2-D array of shape (N, N).
         size : int or tuple, optional
             Number of samples to generate. If None, returns one sample.
+            If int, returns array of shape (size, N).
         seed : int, optional
-            If provided, this seed will be used for this specific random generation
+            If provided, this seed will be used for this specific random generation.
+            The generator will return to its previous state after generation.
 
         Returns:
         --------
         out : ndarray
-            Drawn samples from the normal distribution.
+            Drawn samples from the multivariate normal distribution.
+            If size is None: returns array of shape (N,)
+            If size is int: returns array of shape (size, N)
+
+        Raises:
+        -------
+        TypeError
+            If inputs are not of the correct type
+        ValueError
+            If covariance matrix is not symmetric or dimensions don't match
         """
-        # Convert inputs to numpy arrays
-        mean = np.asarray(mean)
-        cov = np.asarray(cov)
-
-        # Handle 1D case
-        if np.isscalar(mean) or (mean.ndim == 1 and mean.size == 1):
-            mean = np.array([mean]).flatten()
-            cov = np.array([[cov]]) if np.isscalar(cov) else cov.reshape(1, 1)
-
-        # Input validation
-        if not isinstance(mean, (np.ndarray, list, tuple)):
-            raise TypeError("mean must be array_like")
-        if not isinstance(cov, (np.ndarray, list, tuple)):
-            raise TypeError("cov must be array_like")
-
-        # Make mean 1D if it isn't
-        if mean.ndim > 1:
-            mean = mean.flatten()
-
-        # Ensure covariance is 2D
-        if cov.ndim == 0:  # scalar
-            cov = np.array([[cov]])
-        elif cov.ndim == 1:  # 1D array
-            cov = cov.reshape(1, 1)
-
-        # Check compatibility of dimensions
-        if mean.shape[0] != cov.shape[0]:
-            raise ValueError(f"Incompatible dimensions: mean has length {mean.shape[0]}, "
-                        f"cov has shape {cov.shape}")
-        if cov.shape[0] != cov.shape[1]:
-            raise ValueError("cov must be square matrix")
-
-        # Check if size is valid
-        if size is not None:
-            if not isinstance(size, (int, np.integer, tuple, list)):
-                raise TypeError("size must be integer, tuple, or list")
-            if isinstance(size, (int, np.integer)) and size <= 0:
-                raise ValueError("size must be positive")
-            if isinstance(size, (tuple, list)) and any(s <= 0 for s in size):
-                raise ValueError("all elements in size must be positive")
-
         # Set seed if provided
         if seed is not None:
             self._set_seed(seed)
 
+        # Validate size parameter
+        if size is not None:
+            if not isinstance(size, (int, np.integer)):
+                raise TypeError("size must be an integer")
+            if size <= 0:
+                raise ValueError("size must be positive")
+
         try:
-            # Convert to MATLAB format
-            mean_matlab = matlab.double(mean.tolist())
-            cov_matlab = matlab.double(cov.tolist())
-            
-            if size is None:
-                # Generate one sample
-                result = np.array(self.eng.mvnrnd(mean_matlab, cov_matlab, 1.0))
-                return result.flatten()
+            # Handle mean input
+            if isinstance(mean, (list, tuple, np.ndarray)):
+                # Convert to numpy array for validation
+                mean = np.asarray(mean, dtype=float)
+                if mean.ndim > 1:
+                    raise ValueError("mean must be a 1-D array or scalar")
+                mean_matlab = matlab.double([list(map(float, mean))])  # Convert to 1xN row vector
             else:
-                # Generate multiple samples
-                n_samples = size if isinstance(size, (int, np.integer)) else np.prod(size)
-                result = np.array(self.eng.mvnrnd(mean_matlab, cov_matlab, float(n_samples)))
-                
-                if isinstance(size, (tuple, list)):
-                    result = result.reshape(size + (mean.shape[0],))
-                
-                return result
+                # Scalar case
+                if not isinstance(mean, (int, float, np.number)):
+                    raise TypeError("mean must be a number or array-like")
+                mean_matlab = matlab.double([[float(mean)]])
+            
+            # Handle covariance input
+            if isinstance(cov, (list, tuple, np.ndarray)):
+                cov = np.asarray(cov, dtype=float)
+                if cov.ndim == 2:
+                    # Check if covariance matrix is symmetric
+                    if cov.shape[0] != cov.shape[1]:
+                        raise ValueError("covariance matrix must be square")
+                    if not np.allclose(cov, cov.T):
+                        raise ValueError("covariance matrix must be symmetric")
+                    # Check if matrix dimensions match mean dimensions
+                    if isinstance(mean, np.ndarray) and cov.shape[0] != mean.size:
+                        raise ValueError("dimensions of mean and covariance matrix do not match")
+                    # Check if covariance matrix is positive semidefinite
+                    if not np.all(np.linalg.eigvals(cov) >= 0):
+                        raise ValueError("covariance matrix must be positive semidefinite")
+                    cov_matlab = matlab.double([list(map(float, row)) for row in cov])
+                else:
+                    raise ValueError("covariance must be a 2-D array or scalar")
+            else:
+                # Scalar case
+                if not isinstance(cov, (int, float, np.number)):
+                    raise TypeError("covariance must be a number or array-like")
+                if float(cov) < 0:
+                    raise ValueError("variance must be non-negative")
+                cov_matlab = matlab.double([[float(cov)]])
+            
+            # Generate samples using MATLAB's mvnrnd
+            if size is None:
+                size = 1
+            result = np.array(self.eng.mvnrnd(mean_matlab, cov_matlab, float(size)))
+            
+            # Handle output shape
+            if size == 1:
+                return result.flatten()  # Return 1-D array for single sample
+            return result  # Return 2-D array for multiple samples
 
         except Exception as e:
-            raise ValueError(f"MATLAB mvnrnd error: {str(e)}")
+            if "MATLAB" in str(e):
+                raise RuntimeError(f"MATLAB mvnrnd error: {str(e)}")
+            raise  
 
     def randperm(self, n, seed=None):
         """
