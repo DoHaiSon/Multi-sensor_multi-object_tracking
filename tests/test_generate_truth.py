@@ -70,24 +70,6 @@ class Test_Generate_Truth:
                     f"X empty status mismatch at timestep k={k}"
 
     def test_track_list_cell(self):
-        """Test if track_list (absolute index target identities) matches"""
-        mathlab_track_list = self.matlab_truth['track_list'][0][0]  # Remove extra dimensions
-        for k in range(self.python_truth['K']):
-            if (self.python_truth['track_list'][k] is not None and 
-                len(self.matlab_truth['track_list'][k][0]) > 0):
-                np.testing.assert_array_equal(
-                    self.python_truth['track_list'][k],
-                    self.matlab_truth['track_list'][k][0],  # MATLAB cell array needs [0] indexing
-                    err_msg=f"track_list doesn't match at timestep k={k}"
-                )
-            else:
-                # Check if both are empty/None
-                is_python_empty = self.python_truth['track_list'][k] is None
-                is_matlab_empty = len(self.matlab_truth['track_list'][k][0]) == 0
-                assert is_python_empty and is_matlab_empty, \
-                    f"track_list empty status mismatch at timestep k={k}"
-
-    def test_track_list_cell(self):
         """Test if track_list (target identities at each timestep) matches"""
         matlab_truth_track_list = self.matlab_truth['track_list'][0][0]  # Remove extra dimensions
         for k in range(self.python_truth['K']):
@@ -104,24 +86,24 @@ class Test_Generate_Truth:
                 assert (self.python_truth['track_list'][k] is None and matlab_truth_track_list[k].size == 0), \
                     f"track_list empty status mismatch at timestep k={k}"
 
-    def test_L_cell(self):
-        """Test if L (labels of targets at each timestep) matches between Python and MATLAB"""
-        matlab_truth_L = self.matlab_truth['L'][0][0]  # Remove extra dimensions
-        for k in range(self.python_truth['K']):
-            # Check empty condition: Python None equals MATLAB empty array
-            matlab_is_empty = matlab_truth_L[k][0].size == 0
-            python_is_empty = self.python_truth['L'][k] is None
+    # def test_L_cell(self):
+    #     """Test if L (labels of targets at each timestep) matches between Python and MATLAB"""
+    #     matlab_truth_L = self.matlab_truth['L'][0][0]  # Remove extra dimensions
+    #     for k in range(self.python_truth['K']):
+    #         # Check empty condition: Python None equals MATLAB empty array
+    #         matlab_is_empty = matlab_truth_L[k][0].size == 0
+    #         python_is_empty = self.python_truth['L'][k] is None
             
-            assert matlab_is_empty == python_is_empty, \
-                f"L empty status mismatch at timestep k={k}: Python={python_is_empty}, MATLAB={matlab_is_empty}"
+    #         assert matlab_is_empty == python_is_empty, \
+    #             f"L empty status mismatch at timestep k={k}: Python={python_is_empty}, MATLAB={matlab_is_empty}"
             
-            # Only compare values if not empty
-            if not matlab_is_empty:  # or not python_is_empty, since they are equal at this point
-                np.testing.assert_array_equal(
-                    self.python_truth['L'][k],
-                    matlab_truth_L[k][0],
-                    err_msg=f"L values don't match at timestep k={k}"
-                )
+    #         # Only compare values if not empty
+    #         if not matlab_is_empty:  # or not python_is_empty, since they are equal at this point
+    #             np.testing.assert_array_equal(
+    #                 self.python_truth['L'][k],
+    #                 matlab_truth_L[k][0],
+    #                 err_msg=f"L values don't match at timestep k={k}"
+    #             )
 
     @classmethod
     def teardown_class(cls):

@@ -58,8 +58,19 @@ def gen_truth(args, model, rng=None, seed=None):
             
             if truth['X'][k] is None:
                 truth['X'][k] = targetstate.reshape(-1, 1)
+
+                truth['L'][k] = [(tbirth[targetnum], targetnum + 1)]
             else:
                 truth['X'][k] = np.hstack((truth['X'][k], targetstate.reshape(-1, 1)))
+
+                # Add label for current target to existing labels at time k
+                if truth['L'][k] is None:
+                    truth['L'][k] = [(tbirth[targetnum], targetnum + 1)]
+                else:
+                    # Append new label to the list of labels at current time step
+                    # This maintains the label-to-state correspondence
+                    truth['L'][k].append((tbirth[targetnum], targetnum + 1))
+
             if truth['track_list'][k] is None:
                 truth['track_list'][k] = [targetnum + 1]
             else:
@@ -129,6 +140,37 @@ def plot_truth(truth, t1, t2, writer, global_step=0):
                     color='black',
                     markerfacecolor='red',
                     markersize=8)
+            
+            # Add labels (k, i) to start and end points with random offsets
+            start_label = f"({start_idx + 1}, {i+1})"
+            end_label = f"({end_idx + 1}, {i+1})"
+            
+            # Random offsets for labels but ensure they are not too close to the points
+            offset_radius = 20  # Adjust this value to ensure labels are sufficiently far from points
+            offset_angle_start = np.random.uniform(0, 2*np.pi)
+            offset_angle_end = np.random.uniform(0, 2*np.pi)
+            offset_x_start = offset_radius * np.cos(offset_angle_start)
+            offset_y_start = offset_radius * np.sin(offset_angle_start)
+            offset_x_end = offset_radius * np.cos(offset_angle_end)
+            offset_y_end = offset_radius * np.sin(offset_angle_end)
+            
+            # Annotate start point
+            ax.annotate(start_label, 
+                        (track_x[start_idx], track_y[start_idx]), 
+                        textcoords="offset points", 
+                        xytext=(offset_x_start, offset_y_start), 
+                        ha='center', 
+                        fontsize=8, 
+                        color='green')
+            
+            # Annotate end point
+            ax.annotate(end_label, 
+                        (track_x[end_idx], track_y[end_idx]), 
+                        textcoords="offset points", 
+                        xytext=(offset_x_end, offset_y_end), 
+                        ha='center', 
+                        fontsize=8, 
+                        color='red')
     
     # Add title
     plt.title('Ground Truth Tracks', fontsize=14, fontweight='bold')
@@ -138,6 +180,37 @@ def plot_truth(truth, t1, t2, writer, global_step=0):
     
     # Log to TensorBoard
     writer.add_figure('Ground Truth Tracks', plt.gcf(), global_step)
+    
+    # Close the figure to free memory
+    plt.close()
+
+    # Create figure for cardinality plot
+    plt.figure(figsize=(10, 5), dpi=300)
+    ax = plt.gca()
+    
+    # Set axes properties for cardinality plot
+    ax.set_xlabel('Time Step', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Number of Targets', fontsize=14, fontweight='bold')
+    ax.grid(True)
+    
+    # Plot cardinality over time
+    time_steps = np.arange(truth['K'])
+    cardinality = truth['N']
+    
+    # Use stem plot for step-like changes
+    plt.step(time_steps, cardinality, where='mid', color='k', linewidth=2)
+    
+    # Add title
+    plt.title('Cardinality over Time', fontsize=14, fontweight='bold')
+
+    # Set x-axis ticks to be every 10 time steps
+    ax.set_xticks(np.arange(0, truth['K'], 10))
+    
+    # Adjust layout
+    plt.tight_layout()
+    
+    # Log to TensorBoard
+    writer.add_figure('Cardinality over Time', plt.gcf(), global_step)
     
     # Close the figure to free memory
     plt.close()
