@@ -17,6 +17,30 @@ class Logger:
         if self.enable_logging:
             self.writer.add_video(*args, **kwargs)
     
+    def add_scalar(self, *args, **kwargs):
+        if self.enable_logging:
+            self.writer.add_scalar(*args, **kwargs)
+
+    def add_histogram(self, *args, **kwargs):
+        if self.enable_logging:
+            self.writer.add_histogram(*args, **kwargs)
+
+    def add_image(self, *args, **kwargs):
+        if self.enable_logging:
+            self.writer.add_image(*args, **kwargs)
+    
+    def add_graph(self, *args, **kwargs):
+        if self.enable_logging:
+            self.writer.add_graph(*args, **kwargs)
+
+    def add_audio(self, *args, **kwargs):
+        if self.enable_logging:
+            self.writer.add_audio(*args, **kwargs)
+
+    def flush(self):
+        if self.enable_logging:
+            self.writer.flush()
+
     def close(self):
         if self.enable_logging:
             self.writer.close()
