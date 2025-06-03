@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from core.generate_new_state import gen_new_state
-from utils.dataset_utils import save_ground_truth
+from utils.dataset import save_ground_truth
 
 def gen_truth(args, model, rng=None, seed=None):
     """

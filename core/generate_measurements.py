@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from utils.helpers import create_color_palette
-from utils.dataset_utils import save_measurements
+from utils.dataset import save_measurements
 
 def gen_measurements(args, sensors, truth, rng=None, seed=None):
     """

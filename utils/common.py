@@ -6,7 +6,7 @@ from models.brg import Brg_Model
 from models.brg_rng import Brg_rng_Model
 from core.generate_truth import gen_truth, plot_truth
 from core.generate_measurements import gen_measurements, plot_measurements
-from utils.dataset_utils import save_metadata, save_summary
+from utils.dataset import save_metadata, save_summary
 
 def set_seed(seed):
     """
