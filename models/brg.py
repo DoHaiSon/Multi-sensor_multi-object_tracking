@@ -97,7 +97,7 @@ class Brg_Model:
         R = D*D
         w_dim = self.args.z_dim
 
-        # Sensor positions
+        # Sensor positions (6 total available for Brg model)
         positions = [
             [-2000, 0],    # bottom left
             [2000, 0],     # bottom right
@@ -107,7 +107,12 @@ class Brg_Model:
             [0, 0]         # bottom middle
         ]
 
-        for pos in positions:
+        # Only create the number of sensors specified in config
+        num_sensors = getattr(self.args, 'num_sensors', 6)
+        
+        for i in range(num_sensors):
+            pos = positions[i]
+            
             sensor = {
                 'type': 'brg',
                 'z_dim': self.args.z_dim,

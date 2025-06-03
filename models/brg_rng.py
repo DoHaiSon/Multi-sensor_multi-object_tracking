@@ -103,11 +103,11 @@ class Brg_rng_Model:
         # Parameters for range-bearing sensors
         range_c_1 = np.array([[-np.pi/2, np.pi/2], [0, 4000]])
         range_c_2 = np.array([[np.pi/2, 3*np.pi/2], [0, 4000]])
-        rng_brg_D = np.diag([2*np.pi/180, self.args.range_D])  # Use range_D from args
+        rng_brg_D = np.diag([2*np.pi/180, self.args.range_D])
         rng_brg_R = rng_brg_D @ rng_brg_D.T
         rng_brg_pdf_c = 1/(np.pi * 4000)
 
-        # Sensor configurations
+        # Sensor configurations (4 total available)
         sensor_configs = [
             # Bearing sensors
             {
@@ -118,18 +118,6 @@ class Brg_rng_Model:
             },
             {
                 'type': 'brg', 'pos': [2000, 0], 'vel': None,
-                'z_dim': brg_z_dim, 'w_dim': brg_w_dim,
-                'D': brg_D, 'R': brg_R,
-                'range_c': brg_range_c, 'pdf_c': brg_pdf_c
-            },
-            {
-                'type': 'brg', 'pos': [2000, 2000], 'vel': [0, -10],
-                'z_dim': brg_z_dim, 'w_dim': brg_w_dim,
-                'D': brg_D, 'R': brg_R,
-                'range_c': brg_range_c, 'pdf_c': brg_pdf_c
-            },
-            {
-                'type': 'brg', 'pos': [-2000, 2000], 'vel': [10, 0],
                 'z_dim': brg_z_dim, 'w_dim': brg_w_dim,
                 'D': brg_D, 'R': brg_R,
                 'range_c': brg_range_c, 'pdf_c': brg_pdf_c
@@ -149,7 +137,11 @@ class Brg_rng_Model:
             }
         ]
 
-        for config in sensor_configs:
+        # Only create the number of sensors specified in config
+        num_sensors = getattr(self.args, 'num_sensors', 4)
+        for i in range(num_sensors):
+            config = sensor_configs[i]
+            
             sensor = {
                 'type': config['type'],
                 'z_dim': config['z_dim'],

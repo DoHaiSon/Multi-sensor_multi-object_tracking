@@ -96,7 +96,6 @@ class Basic_Model:
         Initialize sensor parameters.
         """
         sensors = []
-        idx = 0
         pdf_c = self.args.pdf_c
         range_c_1 = np.array(self.args.range_c_1).reshape(2, 2)
         range_c_2 = np.array(self.args.range_c_2).reshape(2, 2)
@@ -118,7 +117,13 @@ class Basic_Model:
         ]
         ranges = [range_c_1, range_c_2, range_c_2, range_c_1]
         
-        for pos, vel, rng in zip(positions, velocities, ranges):
+        # Only create the number of sensors specified in config
+        num_sensors = getattr(self.args, 'num_sensors', 4)
+        for i in range(num_sensors):
+            pos = positions[i]
+            vel = velocities[i]
+            rng = ranges[i]
+            
             sensor = {
                 'type': 'brg_rng',
                 'z_dim': self.args.z_dim,
@@ -136,6 +141,5 @@ class Basic_Model:
                 'pdf_c': pdf_c
             }
             sensors.append(sensor)
-            idx += 1
         
         return sensors

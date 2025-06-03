@@ -94,4 +94,11 @@ def get_args(args_list=None):
     if args.model == 'Brg' or args.model == 'Brg_rng':
         args.z_dim = 1
     
+    # Validate num_sensors
+    if hasattr(args, 'num_sensors'):
+        if not (1 <= args.num_sensors <= 6):
+            raise ValueError(f"num_sensors must be between 1 and 6, got {args.num_sensors}")
+    else:
+        args.num_sensors = 4  # Default value
+    
     return args
