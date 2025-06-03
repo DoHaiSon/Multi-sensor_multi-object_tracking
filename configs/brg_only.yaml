@@ -1,0 +1,14 @@
+# Configuration for bearing-only tracking
+base_config: 'default'
+
+# Override model for bearing-only
+model: 'Brg'
+z_dim: 1
+
+# Bearing-specific parameters
+bearing_D: 0.005235987755982988  # 0.3*np.pi/180
+
+# Different scenario for bearing tracking
+scenario: 'scenario1'
+
+dataset_dir: './data/brg_tracking'
