@@ -22,7 +22,7 @@ def define_args():
                         choices=['Basic', 'Brg', 'Brg_rng'], help='Model to use for generating data')
     parser.add_argument('--P_D', default=0.95, type=float, help='Probability of detection')
     parser.add_argument('--lambda_c', default=10, type=float, help='Average number of clutter per frame')
-    parser.add_argument('--K', default=100, type=int, help='length of data/number of scans')
+    parser.add_argument('--K', default=50, type=int, help='length of data/number of scans')
 
     # Dynamic parameters
     parser.add_argument('--x_dim', type=int, default=5, help='Dimension of state vector x (x, v_x, y, v_y, omega)')
@@ -54,13 +54,18 @@ def define_args():
     # Generate truth parameters
     parser.add_argument('--scenario', type=str, default='scenario1', help='Scenario file name in /examples folder (default: scenario1)')
 
+    # Dataset options
+    parser.add_argument('--save_dataset', action='store_true', default=False, help='Enable saving generated datasets')
+    parser.add_argument('--load_dataset', action='store_true', default=True, help='Load existing dataset instead of generating new one')
+    parser.add_argument('--dataset_dir', type=str, default='./data', help='Directory to save/load datasets')
+    
     # Running parameters
     parser.add_argument('--verbose', default=True, type=str2bool, help='Enable verbose output')
     parser.add_argument('--enable_logging', type=bool, default=True, help='Enable/disable logging and log directory creation')
     parser.add_argument('--log_dir', type=str, help='Directory to save logs (auto-generated if not provided)')
     parser.add_argument('--use_seed', default=True, type=str2bool, help='Use fixed seed for reproducibility')
     parser.add_argument('--seed', type=int, default=2808, help='Random seed value')
-
+    
     return parser
 
 def get_args(args_list=None):

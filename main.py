@@ -1,13 +1,10 @@
 import os, sys
-import numpy as np
-
 from config import get_args 
 from utils.logger import Logger
-from core.generate_truth import gen_truth, plot_truth
-from core.generate_measurements import gen_measurements, plot_measurements
-from utils.common import set_seed, load_configurations, select_model
+from utils.common import set_seed, create_dataset, load_dataset, load_configurations
 
-if __name__ == '__main__':
+def main():
+    """Main function to run the multi-sensor multi-object tracking simulation."""
     args = get_args()
 
     seed = args.seed if args.use_seed else None
@@ -19,22 +16,17 @@ if __name__ == '__main__':
     # Configure the logger
     writer = Logger(enable_logging=args.enable_logging, log_dir=args.log_dir)
 
-    # Load the configurations
+    # Load configurations
     load_configurations(args, writer)
 
-    # Generate model
-    model = select_model(args, writer)
-
-    # Generate ground truth
-    truth = gen_truth(args, model.dynamics, seed=seed)
-
-    # Visualize ground truth
-    plot_truth(truth, 0, args.K, writer)
-
-    # Generate measurements
-    measurements = gen_measurements(args, model.sensors, truth, seed=seed)
-
-    # Visualize measurements: heavy computation (RAM), consider commenting out
-    plot_measurements(args, truth, measurements, model.sensors, 0, args.K, writer)
+    # Load dataset if specified, otherwise create new one
+    if args.load_dataset:
+        truth, measurements, model = load_dataset(args, writer)
+    else:
+        truth, measurements, model = create_dataset(args, writer, seed)
 
     writer.close()
+    print("Completed!")
+
+if __name__ == '__main__':
+    main()

@@ -2,6 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from utils.helpers import create_color_palette
+from utils.dataset_utils import save_measurements
 
 def gen_measurements(args, sensors, truth, rng=None, seed=None):
     """
@@ -123,6 +124,11 @@ def gen_measurements(args, sensors, truth, rng=None, seed=None):
                         C = C.reshape(-1, 1)
                     meas['Z'][k][s] = C
     
+    # Save measurements if dataset saving is enabled
+    if hasattr(args, 'save_dataset') and args.save_dataset:
+        scenario_name = getattr(args, 'scenario', 'default')
+        save_measurements(meas, args.dataset_dir, scenario_name)
+
     return meas
 
 def gen_MS_observation(sensors, s, X, W, rng=None, seed=None):

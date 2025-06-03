@@ -1,6 +1,8 @@
+import os
 import numpy as np
-from core.generate_new_state import gen_new_state
 import matplotlib.pyplot as plt
+from core.generate_new_state import gen_new_state
+from utils.dataset_utils import save_ground_truth
 
 def gen_truth(args, model, rng=None, seed=None):
     """
@@ -78,6 +80,11 @@ def gen_truth(args, model, rng=None, seed=None):
             truth['N'][k] += 1
 
     truth['total_tracks'] = nbirths
+
+    # Save ground truth if dataset saving is enabled
+    if hasattr(args, 'save_dataset') and args.save_dataset:
+        scenario_name = getattr(args, 'scenario', 'default')
+        save_ground_truth(truth, args.dataset_dir, scenario_name)
 
     return truth
 
