@@ -26,7 +26,6 @@ class Mixed_Model:
         # Initialize dynamics
         self.dynamics = {
             'x_dim': self.args.x_dim,  # x, vx, y, vy, omega
-            'z_dim': self.args.z_dim,  # azimuth, range
             'v_dim': self.args.v_dim,
             'T': self.args.T,
             'sigma_vel': self.args.sigma_vel,

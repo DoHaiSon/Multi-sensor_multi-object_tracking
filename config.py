@@ -89,10 +89,6 @@ def get_args(override_args=None):
     except ImportError:
         raise ValueError(f"Scenario '{args.scenario}' not found in examples folder.")
     
-    # Adjust z_dim based on model type
-    if args.model == 'Brg' or args.model == 'Brg_rng':
-        args.z_dim = 1
-    
     # Validate num_sensors
     if hasattr(args, 'num_sensors'):
         if not (1 <= args.num_sensors <= 6):
