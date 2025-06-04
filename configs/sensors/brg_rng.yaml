@@ -12,15 +12,15 @@ sensors:
   bearing_range:
     type: 'brg_rng'
     z_dim: 2
-    noise_std: [0.0349, 100]
-    detection_prob: [0.98, 0.98]
-    clutter_rate: [10, 15]
-    pdf_c: 7.957747e-06
+    noise_std: ["2*np.pi/180", 10]  # bearing and range standard deviations
+    detection_prob: [0.95, 0.95]
+    clutter_rate: [10, 10]
+    pdf_c: "1/(np.pi * 4000)"  # clutter density
   clutter_ranges:
-    - [[-1.5708, 1.5708], [0, 4000]]
-    - [[1.5708, 4.7124], [0, 4000]]
-    - [[1.5708, 4.7124], [0, 4000]]
-    - [[-1.5708, 1.5708], [0, 4000]]
+    - [["-(np.pi/2)", "np.pi/2"], [0, 4000]]  # sensor 1 field of view
+    - [["np.pi/2", "3*np.pi/2"], [0, 4000]]   # sensor 2 field of view
+    - [["np.pi/2", "3*np.pi/2"], [0, 4000]]   # sensor 3 field of view
+    - [["-(np.pi/2)", "np.pi/2"], [0, 4000]]  # sensor 4 field of view
 
 # Birth model positions
 birth_positions:
@@ -29,10 +29,4 @@ birth_positions:
   - [250, 0, 750, 0, 0]
   - [1000, 0, 1500, 0, 0]
 
-birth_covariance_diag: [50, 50, 50, 50, 0.1047]
-
-# Observation parameters specific to bearing-range model
-pdf_c: 7.957747154594767e-08  # 1/(pi * 4000)
-bearing_D: 0.0349  # 2*pi/180
-range_D: 100.0
-D: [0.034906585039886595, 100]  # [2*pi/180, range_noise]
+birth_covariance_diag: [50, 50, 50, 50, "6*(np.pi/180)"]  # initial state uncertainty

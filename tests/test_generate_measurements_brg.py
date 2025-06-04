@@ -24,10 +24,10 @@ class Test_Generate_Measurements:
         """
         # Initialize args with Brg model
         cls.args = get_args([])
-        cls.args.model = 'brg'  # Use lowercase to match config files    
-        cls.args.z_dim = 1
+        cls.args.model = 'brg'  
         cls.args.use_seed = True   
         cls.args.enable_logging = False
+        cls.args.save_dataset = False  # Disable dataset saving for unit tests
         
         # Initialize logger
         cls.writer = Logger(enable_logging=False)

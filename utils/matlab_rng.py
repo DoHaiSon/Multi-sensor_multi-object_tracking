@@ -318,10 +318,20 @@ class Matlab_RNG:
                     raise TypeError("mean must be a number or array-like")
                 mean_matlab = matlab.double([[float(mean)]])
             
-            # Handle covariance input
-            if isinstance(cov, (list, tuple, np.ndarray)):
+            # Handle covariance input - fixed logic for scalar detection
+            if np.isscalar(cov) or (isinstance(cov, (int, float, np.number))):
+                # Scalar case
+                if float(cov) < 0:
+                    raise ValueError("variance must be non-negative")
+                cov_matlab = matlab.double([[float(cov)]])
+            elif isinstance(cov, (list, tuple, np.ndarray)):
                 cov = np.asarray(cov, dtype=float)
-                if cov.ndim == 2:
+                if cov.ndim == 0:
+                    # Handle 0-dimensional numpy array (scalar)
+                    if float(cov) < 0:
+                        raise ValueError("variance must be non-negative")
+                    cov_matlab = matlab.double([[float(cov)]])
+                elif cov.ndim == 2:
                     # Check if covariance matrix is symmetric
                     if cov.shape[0] != cov.shape[1]:
                         raise ValueError("covariance matrix must be square")
@@ -337,12 +347,7 @@ class Matlab_RNG:
                 else:
                     raise ValueError("covariance must be a 2-D array or scalar")
             else:
-                # Scalar case
-                if not isinstance(cov, (int, float, np.number)):
-                    raise TypeError("covariance must be a number or array-like")
-                if float(cov) < 0:
-                    raise ValueError("variance must be non-negative")
-                cov_matlab = matlab.double([[float(cov)]])
+                raise TypeError("covariance must be a number or array-like")
             
             # Generate samples using MATLAB's mvnrnd
             if size is None:

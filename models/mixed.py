@@ -58,6 +58,34 @@ class Mixed_Model:
         # Visualize sensor positions
         plot_sensor_positions(self, self.writer)
 
+    def _evaluate_expressions(self, config):
+        """
+        Evaluate string expressions containing numpy functions in config.
+        
+        Args:
+            config (dict): Configuration dictionary that may contain string expressions
+            
+        Returns:
+            dict: Configuration with evaluated expressions
+        """
+        import copy
+        
+        def evaluate_recursive(obj):
+            if isinstance(obj, dict):
+                return {k: evaluate_recursive(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [evaluate_recursive(item) for item in obj]
+            elif isinstance(obj, str) and 'np.' in obj:
+                # Safely evaluate numpy expressions
+                try:
+                    return eval(obj, {"np": np})
+                except:
+                    return obj  # Return original string if evaluation fails
+            else:
+                return obj
+        
+        return evaluate_recursive(copy.deepcopy(config))
+
     def load_sensor_config(self):
         """
         Load sensor configuration from YAML file.
@@ -71,7 +99,8 @@ class Mixed_Model:
         config_path = os.path.join('configs', 'sensors', 'mixed.yaml')
         if os.path.exists(config_path):
             with open(config_path, 'r') as f:
-                return yaml.safe_load(f)
+                config = yaml.safe_load(f)
+                return self._evaluate_expressions(config)
         else:
             return self.get_default_config()
     
@@ -86,51 +115,82 @@ class Mixed_Model:
             dict: Default configuration with bearing and bearing-range sensors
         """
         return {
-            'num_sensors': 4,
+            'num_sensors': 6,
             'sensors': {
                 'sensor_configs': [
                     {
                         'type': 'brg',
                         'position': [-2000, 0],
                         'z_dim': 1,
-                        'noise_std': 0.1323,
-                        'detection_prob': [0.98, 0.98],
-                        'clutter_rate': [10, 15],
-                        'clutter_range': [0, 6.283185307179586]
+                        'noise_std': 0.2*np.pi/180,  # D = 0.2*pi/180
+                        'detection_prob': [0.95, 0.95],  # [P_D P_D]
+                        'clutter_rate': [10, 10],  # [lambda_c lambda_c]
+                        'clutter_range': [0, 2*np.pi],  # [0, 2*pi]
+                        'pdf_c': 1/(2*np.pi)  # 1/(2*pi)
                     },
                     {
                         'type': 'brg',
                         'position': [2000, 0],
                         'z_dim': 1,
-                        'noise_std': 0.1323,
-                        'detection_prob': [0.98, 0.98],
-                        'clutter_rate': [10, 15],
-                        'clutter_range': [0, 6.283185307179586]
+                        'noise_std': 0.2*np.pi/180,  # D = 0.2*pi/180
+                        'detection_prob': [0.95, 0.95],  # [P_D P_D]
+                        'clutter_rate': [10, 10],  # [lambda_c lambda_c]
+                        'clutter_range': [0, 2*np.pi],  # [0, 2*pi]
+                        'pdf_c': 1/(2*np.pi)  # 1/(2*pi)
+                    },
+                    {
+                        'type': 'brg',
+                        'position': [2000, 2000],
+                        'velocity': [0, -10],
+                        'z_dim': 1,
+                        'noise_std': 0.2*np.pi/180,  # D = 0.2*pi/180
+                        'detection_prob': [0.95, 0.95],  # [P_D P_D]
+                        'clutter_rate': [10, 10],  # [lambda_c lambda_c]
+                        'clutter_range': [0, 2*np.pi],  # [0, 2*pi]
+                        'pdf_c': 1/(2*np.pi)  # 1/(2*pi)
+                    },
+                    {
+                        'type': 'brg',
+                        'position': [-2000, 2000],
+                        'velocity': [10, 0],
+                        'z_dim': 1,
+                        'noise_std': 0.2*np.pi/180,  # D = 0.2*pi/180
+                        'detection_prob': [0.95, 0.95],  # [P_D P_D]
+                        'clutter_rate': [10, 10],  # [lambda_c lambda_c]
+                        'clutter_range': [0, 2*np.pi],  # [0, 2*pi]
+                        'pdf_c': 1/(2*np.pi)  # 1/(2*pi)
                     },
                     {
                         'type': 'brg_rng',
                         'position': [2000, 2000],
                         'velocity': [0, -10],
                         'z_dim': 2,
-                        'noise_std': [0.0349, 100],
-                        'detection_prob': [0.98, 0.98],
-                        'clutter_rate': [10, 15],
-                        'clutter_range': [[1.5708, 4.7124], [0, 4000]],
-                        'pdf_c': 7.957747e-06
+                        'noise_std': [2*np.pi/180, 10],  # D = diag([2*pi/180, 10])
+                        'detection_prob': [0.95, 0.95],  # [P_D P_D]
+                        'clutter_rate': [10, 10],  # [lambda_c lambda_c]
+                        'clutter_range': [[np.pi/2, 3*np.pi/2], [0, 4000]],  # range_c_2
+                        'pdf_c': 1/(np.pi * 4000)  # 1/(pi * 4000)
                     },
                     {
                         'type': 'brg_rng',
                         'position': [-2000, 2000],
                         'velocity': [10, 0],
                         'z_dim': 2,
-                        'noise_std': [0.0349, 100],
-                        'detection_prob': [0.98, 0.98],
-                        'clutter_rate': [10, 15],
-                        'clutter_range': [[-1.5708, 1.5708], [0, 4000]],
-                        'pdf_c': 7.957747e-06
+                        'noise_std': [2*np.pi/180, 10],  # D = diag([2*pi/180, 10])
+                        'detection_prob': [0.95, 0.95],  # [P_D P_D]
+                        'clutter_rate': [10, 10],  # [lambda_c lambda_c]
+                        'clutter_range': [[-np.pi/2, np.pi/2], [0, 4000]],  # range_c_1
+                        'pdf_c': 1/(np.pi * 4000)  # 1/(pi * 4000)
                     }
                 ]
-            }
+            },
+            'birth_positions': [
+                [-1500, 0, 250, 0, 0],
+                [-250, 0, 1000, 0, 0],
+                [250, 0, 750, 0, 0],
+                [1000, 0, 1500, 0, 0]
+            ],
+            'birth_covariance_diag': [50, 50, 50, 50, 6*np.pi/180]  # 6*pi/180
         }
 
     def calculate_noise_matrices(self):
@@ -179,7 +239,7 @@ class Mixed_Model:
             [1000, 0, 1500, 0, 0]
         ])
         
-        diag_values = self.sensor_config.get('birth_covariance_diag', [50, 50, 50, 50, 0.1047])
+        diag_values = self.sensor_config.get('birth_covariance_diag', [50, 50, 50, 50, 6*np.pi/180])
         B_diag = np.diag(diag_values)
         P = np.dot(B_diag, B_diag)
         

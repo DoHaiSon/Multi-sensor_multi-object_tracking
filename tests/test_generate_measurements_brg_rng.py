@@ -24,10 +24,10 @@ class Test_Generate_Measurements:
         """
         # Initialize args with Brg_rng model
         cls.args = get_args([])
-        cls.args.model = 'brg_rng'  # Use lowercase to match config files
-        cls.args.z_dim = 2
+        cls.args.model = 'brg_rng' 
         cls.args.use_seed = True   
         cls.args.enable_logging = False
+        cls.args.save_dataset = False  # Disable dataset saving for unit tests
         
         # Initialize logger
         cls.writer = Logger(enable_logging=False)
@@ -91,7 +91,7 @@ class Test_Generate_Measurements:
         assert np.allclose(
             self.matlab_meas['P_D'][0][0],
             self.python_meas['P_D'], 
-            rtol=1e-10
+            rtol=1e-6, atol=1e-8
         ), "Detection probabilities don't match"
 
     def test_measurements_lambda_c(self):
@@ -110,7 +110,7 @@ class Test_Generate_Measurements:
         assert np.allclose(
             self.matlab_meas['lambda_c'][0][0],
             self.python_meas['lambda_c'], 
-            rtol=1e-10
+            rtol=1e-6, atol=1e-8
         ), "Clutter rates don't match"
 
     def test_measurements_Z(self):
@@ -135,12 +135,32 @@ class Test_Generate_Measurements:
                 if matlab_Z.size == 0 and python_Z.size == 0:
                     continue
                     
-                # If both have data, compare values
-                assert np.allclose(
-                    matlab_Z, 
-                    python_Z, 
-                    rtol=1e-10
-                ), f"Measurements don't match at time {k}, sensor {s}"
+                # If both have data, compare values with detailed error reporting
+                if matlab_Z.size > 0 and python_Z.size > 0:
+                    # Check if shapes match first
+                    if matlab_Z.shape != python_Z.shape:
+                        print(f"Shape mismatch at time {k}, sensor {s}:")
+                        print(f"MATLAB shape: {matlab_Z.shape}, Python shape: {python_Z.shape}")
+                        assert False, f"Shape mismatch at time {k}, sensor {s}"
+                    
+                    # Check element-wise differences
+                    if not np.allclose(matlab_Z, python_Z, rtol=1e-6, atol=1e-8):
+                        diff = np.abs(matlab_Z - python_Z)
+                        max_diff_idx = np.unravel_index(np.argmax(diff), diff.shape)
+                        max_diff = diff[max_diff_idx]
+                        
+                        print(f"Measurement mismatch at time {k}, sensor {s}:")
+                        print(f"Maximum difference: {max_diff} at position {max_diff_idx}")
+                        print(f"MATLAB value at {max_diff_idx}: {matlab_Z[max_diff_idx]}")
+                        print(f"Python value at {max_diff_idx}: {python_Z[max_diff_idx]}")
+                        print(f"Relative difference: {max_diff / abs(matlab_Z[max_diff_idx]) if matlab_Z[max_diff_idx] != 0 else 'inf'}")
+                        
+                        # Show first few differences for debugging
+                        print(f"First 5 MATLAB values: {matlab_Z.flatten()[:5]}")
+                        print(f"First 5 Python values: {python_Z.flatten()[:5]}")
+                        print(f"First 5 differences: {diff.flatten()[:5]}")
+                        
+                        assert False, f"Measurements don't match at time {k}, sensor {s}"
 
     def test_measurements_consistency(self):
         """

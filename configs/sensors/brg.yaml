@@ -8,21 +8,22 @@ num_sensors: 6
 # Sensor configurations
 sensors:
   positions:
-    - [-2000, 0]
-    - [2000, 0]
-    - [2000, 2000]
-    - [-2000, 2000]
-    - [0, 2000]
-    - [0, 0]
+    - [-2000, 0]    # bottom left
+    - [2000, 0]     # bottom right
+    - [2000, 2000]  # top right
+    - [-2000, 2000] # top left
+    - [0, 2000]     # top middle
+    - [0, 0]        # bottom middle
     
   # Bearing-only sensor parameters
   bearing:
     type: 'brg'
     z_dim: 1
-    noise_std: 0.1323  # Bearing noise standard deviation
-    detection_prob: [0.98, 0.98]
-    clutter_rate: [10, 15]
-    clutter_range: [0, 6.283185307179586]  # [0, 2*pi]
+    noise_std: "0.2*np.pi/180"  # D = 0.2*pi/180
+    detection_prob: [0.95, 0.95]  # [P_D P_D]
+    clutter_rate: [10, 10]  # [lambda_c lambda_c]
+    clutter_range: [0, "2*np.pi"]  # [0, 2*pi]
+    pdf_c: "1/(2*np.pi)"  # 1/(2*pi)
 
 # Birth model positions  
 birth_positions:
@@ -31,8 +32,9 @@ birth_positions:
   - [250, 0, 750, 0, 0]
   - [1000, 0, 1500, 0, 0]
 
-birth_covariance_diag: [50, 50, 50, 50, 0.1047]
+birth_covariance_diag: [50, 50, 50, 50, "6*(np.pi/180)"]  # 6*pi/180
 
 # Observation parameters specific to bearing-only model
-bearing_D: 0.1323  # Bearing measurement noise
-clutter_range_bearing: [0, 6.283185307179586]  # [0, 2*pi]
+bearing_D: "0.2*np.pi/180"  # bearing measurement noise standard deviation
+pdf_c: "1/(2*np.pi)"  # clutter density
+clutter_range_bearing: [0, "2*np.pi"]  # full circle bearing range

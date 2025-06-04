@@ -57,6 +57,34 @@ class Brg_Model:
         # Visualize sensor positions
         plot_sensor_positions(self, self.writer)
 
+    def _evaluate_expressions(self, config):
+        """
+        Evaluate string expressions containing numpy functions in config.
+        
+        Args:
+            config (dict): Configuration dictionary that may contain string expressions
+            
+        Returns:
+            dict: Configuration with evaluated expressions
+        """
+        import copy
+        
+        def evaluate_recursive(obj):
+            if isinstance(obj, dict):
+                return {k: evaluate_recursive(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [evaluate_recursive(item) for item in obj]
+            elif isinstance(obj, str) and 'np.' in obj:
+                # Safely evaluate numpy expressions
+                try:
+                    return eval(obj, {"np": np})
+                except:
+                    return obj  # Return original string if evaluation fails
+            else:
+                return obj
+        
+        return evaluate_recursive(copy.deepcopy(config))
+
     def load_sensor_config(self):
         """
         Load sensor configuration from YAML file.
@@ -70,7 +98,8 @@ class Brg_Model:
         config_path = os.path.join('configs', 'sensors', 'brg.yaml')
         if os.path.exists(config_path):
             with open(config_path, 'r') as f:
-                return yaml.safe_load(f)
+                config = yaml.safe_load(f)
+                return self._evaluate_expressions(config)
         else:
             # Fallback to default configuration if file doesn't exist
             return self.get_default_config()
@@ -92,14 +121,15 @@ class Brg_Model:
                 'bearing': {
                     'type': 'brg',
                     'z_dim': 1,
-                    'noise_std': 0.1323,
-                    'detection_prob': [0.98, 0.98],
-                    'clutter_rate': [10, 15],
-                    'clutter_range': [0, 6.283185307179586]
+                    'noise_std': 0.2*np.pi/180,  # D = 0.2*pi/180
+                    'detection_prob': [0.95, 0.95],  # [P_D P_D]
+                    'clutter_rate': [10, 10],  # [lambda_c lambda_c]
+                    'clutter_range': [0, 2*np.pi],  # [0, 2*pi]
+                    'pdf_c': 1/(2*np.pi)  # 1/(2*pi)
                 }
             },
             'birth_positions': [[-1500, 0, 250, 0, 0], [-250, 0, 1000, 0, 0], [250, 0, 750, 0, 0], [1000, 0, 1500, 0, 0]],
-            'birth_covariance_diag': [50, 50, 50, 50, 0.1047]
+            'birth_covariance_diag': [50, 50, 50, 50, 6*np.pi/180]  # 6*pi/180
         }
 
     def calculate_noise_matrices(self):

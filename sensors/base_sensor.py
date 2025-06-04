@@ -68,36 +68,26 @@ class BaseSensor(ABC):
         Returns:
             np.ndarray: Noise matrix with shape (z_dim, num_measurements)
         """
+        #! TODO: double-check the noise generation logic for compatibility with MATLAB RNG
         if rng is not None:
             # Use MATLAB-compatible RNG
-            if self.R.ndim == 0:  # Scalar variance
-                noise_std = np.sqrt(self.R)
-                return rng.normal(0, noise_std, (self.z_dim, num_measurements), seed=seed)
-            else:  # Covariance matrix
-                # Generate multivariate normal noise
-                noise = np.zeros((self.z_dim, num_measurements))
-                for i in range(num_measurements):
-                    sample_seed = seed + i if seed is not None else None
-                    noise[:, i] = rng.multivariate_normal(
-                        np.zeros(self.z_dim), 
-                        self.R, 
-                        seed=sample_seed
-                    )
-                return noise
+            noise = rng.multivariate_normal(mean=np.zeros(self.z_dim),
+                                            cov=self.R, 
+                                            size=num_measurements,
+                                            seed=seed).T  # Matlab_RNG
         else:
-            # Use NumPy random
             if seed is not None:
                 np.random.seed(seed)
-            
-            if self.R.ndim == 0:  # Scalar variance
-                noise_std = np.sqrt(self.R)
-                return np.random.normal(0, noise_std, (self.z_dim, num_measurements))
-            else:  # Covariance matrix
-                return np.random.multivariate_normal(
-                    np.zeros(self.z_dim), 
-                    self.R, 
-                    num_measurements
-                ).T
+            if np.isscalar(self.R) or self.R.size == 1:
+                # For scalar covariance (e.g., bearing-only sensors)
+                noise = np.random.normal(0, np.sqrt(float(self.R)),
+                                         size=(1, num_measurements))
+            else:
+                # For matrix covariance
+                noise = np.random.multivariate_normal(mean=np.zeros(self.z_dim), 
+                                                      cov=self.R,
+                                                      size=num_measurements).T  # NumPy random
+        return noise
     
     def generate_clutter(self, num_clutter, rng=None, seed=None):
         """Generate clutter measurements."""

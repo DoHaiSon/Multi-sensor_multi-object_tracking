@@ -25,6 +25,7 @@ class Test_Generate_Truth:
         cls.args = get_args([])
         cls.args.use_seed = True   
         cls.args.enable_logging = False
+        cls.args.save_dataset = False  # Disable dataset saving for unit tests
         
         # Initialize logger
         cls.writer = Logger(enable_logging=False)

@@ -89,11 +89,29 @@ def get_args(override_args=None):
     except ImportError:
         raise ValueError(f"Scenario '{args.scenario}' not found in examples folder.")
     
-    # Validate num_sensors
-    if hasattr(args, 'num_sensors'):
-        if not (1 <= args.num_sensors <= 6):
-            raise ValueError(f"num_sensors must be between 1 and 6, got {args.num_sensors}")
+    # Load model-specific config to get num_sensors
+    model_config_path = os.path.join('configs', 'sensors', f'{args.model.lower()}.yaml')
+    if os.path.exists(model_config_path):
+        with open(model_config_path, 'r') as f:
+            model_config = yaml.safe_load(f)
+        if 'num_sensors' in model_config:
+            args.num_sensors = model_config['num_sensors']
+        else:
+            # Fallback: try to get from sensor configs length
+            if 'sensors' in model_config:
+                if 'sensor_configs' in model_config['sensors']:
+                    args.num_sensors = len(model_config['sensors']['sensor_configs'])
+                elif 'positions' in model_config['sensors']:
+                    args.num_sensors = len(model_config['sensors']['positions'])
+                else:
+                    args.num_sensors = 4  # Default fallback
+            else:
+                args.num_sensors = 4  # Default fallback
     else:
-        args.num_sensors = 4  # Default value
+        args.num_sensors = 4  # Default fallback
+    
+    # Validate num_sensors
+    if not (1 <= args.num_sensors <= 6):
+        raise ValueError(f"num_sensors must be between 1 and 6, got {args.num_sensors}")
     
     return args

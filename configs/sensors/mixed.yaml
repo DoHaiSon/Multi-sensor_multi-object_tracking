@@ -3,48 +3,70 @@
 
 # Model configuration
 model: 'mixed'
-num_sensors: 4
+num_sensors: 6
 
 # Mixed sensor configurations
 sensors:
   sensor_configs:
     # Bearing-only sensors
     - type: 'brg'
-      position: [-2000, 0]
+      position: [-2000, 0]  # bottom left
       z_dim: 1
-      noise_std: 0.1323
-      detection_prob: [0.98, 0.98]
-      clutter_rate: [10, 15]
-      clutter_range: [0, 6.283185307179586]  # [0, 2*pi]
+      noise_std: "0.2*np.pi/180"  # D = 0.2*pi/180
+      detection_prob: [0.95, 0.95]  # [P_D P_D]
+      clutter_rate: [10, 10]  # [lambda_c lambda_c]
+      clutter_range: [0, "2*np.pi"]  # [0, 2*pi]
+      pdf_c: "1/(2*np.pi)"  # 1/(2*pi)
       
     - type: 'brg'
-      position: [2000, 0]
+      position: [2000, 0]  # bottom right
       z_dim: 1
-      noise_std: 0.1323
-      detection_prob: [0.98, 0.98]
-      clutter_rate: [10, 15]
-      clutter_range: [0, 6.283185307179586]  # [0, 2*pi]
+      noise_std: "0.2*np.pi/180"  # D = 0.2*pi/180
+      detection_prob: [0.95, 0.95]  # [P_D P_D]
+      clutter_rate: [10, 10]  # [lambda_c lambda_c]
+      clutter_range: [0, "2*np.pi"]  # [0, 2*pi]
+      pdf_c: "1/(2*np.pi)"  # 1/(2*pi)
+      
+    - type: 'brg'
+      position: [2000, 2000]  # top right
+      velocity: [0, -10]
+      z_dim: 1
+      noise_std: "0.2*np.pi/180"  # D = 0.2*pi/180
+      detection_prob: [0.95, 0.95]  # [P_D P_D]
+      clutter_rate: [10, 10]  # [lambda_c lambda_c]
+      clutter_range: [0, "2*np.pi"]  # [0, 2*pi]
+      pdf_c: "1/(2*np.pi)"  # 1/(2*pi)
+      
+    - type: 'brg'
+      position: [-2000, 2000]  # top left
+      velocity: [10, 0]
+      z_dim: 1
+      noise_std: "0.2*np.pi/180"  # D = 0.2*pi/180
+      detection_prob: [0.95, 0.95]  # [P_D P_D]
+      clutter_rate: [10, 10]  # [lambda_c lambda_c]
+      clutter_range: [0, "2*np.pi"]  # [0, 2*pi]
+      pdf_c: "1/(2*np.pi)"  # 1/(2*pi)
       
     # Bearing-range sensors
     - type: 'brg_rng'
-      position: [2000, 2000]
+      position: [2000, 2000]  # top right
       velocity: [0, -10]
       z_dim: 2
-      noise_std: [0.0349, 100]  # [bearing_noise, range_noise]
-      detection_prob: [0.98, 0.98]
-      clutter_rate: [10, 15]
-      clutter_range: [[1.5708, 4.7124], [0, 4000]]  # [[pi/2, 3*pi/2], [0, 4000]]
-      pdf_c: 7.957747e-06
+      noise_std: ["2*np.pi/180", 10]  # D = diag([2*pi/180, 10])
+      detection_prob: [0.95, 0.95]  # [P_D P_D]
+      clutter_rate: [10, 10]  # [lambda_c lambda_c]
+      clutter_range: [["np.pi/2", "3*np.pi/2"], [0, 4000]]  # range_c_2 = [pi/2, 3*pi/2; 0, 4000]
+      pdf_c: "1/(np.pi * 4000)"  # 1/(pi * 4000)
       
     - type: 'brg_rng'
-      position: [-2000, 2000]
+      position: [-2000, 2000]  # top left
       velocity: [10, 0]
       z_dim: 2
-      noise_std: [0.0349, 100]  # [bearing_noise, range_noise]
-      detection_prob: [0.98, 0.98]
-      clutter_rate: [10, 15]
-      clutter_range: [[-1.5708, 1.5708], [0, 4000]]  # [[-pi/2, pi/2], [0, 4000]]
-      pdf_c: 7.957747e-06
+      noise_std: ["2*np.pi/180", 10]  # D = diag([2*pi/180, 10])
+      detection_prob: [0.95, 0.95]  # [P_D P_D]
+      clutter_rate: [10, 10]  # [lambda_c lambda_c]
+      clutter_range: [["-(np.pi/2)", "np.pi/2"], [0, 4000]]  # range_c_1 = [-pi/2, pi/2; 0, 4000]
+      pdf_c: "1/(np.pi * 4000)"  # 1/(pi * 4000)
 
 # Birth model positions
 birth_positions:
@@ -53,10 +75,4 @@ birth_positions:
   - [250, 0, 750, 0, 0]
   - [1000, 0, 1500, 0, 0]
 
-birth_covariance_diag: [50, 50, 50, 50, 0.1047]
-
-# Observation parameters specific to mixed model
-pdf_c: 7.957747154594767e-08  # 1/(pi * 4000)
-bearing_D: 0.0349  # 2*pi/180
-range_D: 100.0
-D: [0.034906585039886595, 100]  # [2*pi/180, range_noise]
+birth_covariance_diag: [50, 50, 50, 50, "6*(np.pi/180)"]  # 6*pi/180
