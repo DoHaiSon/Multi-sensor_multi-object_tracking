@@ -1,14 +1,14 @@
 # Default configuration for Multi-Sensor Multi-Object Tracking
 
 # Model parameters
-model: 'Basic'  # choices: ['Basic', 'Brg', 'Brg_rng']
+model: 'Brg_rng'  # choices: ['Brg', 'Brg_rng', 'Mixed']
 P_D: 0.95
 lambda_c: 10
-K: 20
+K: 100
 
 # Dynamic parameters
 x_dim: 5  # Dimension of state vector x (x, v_x, y, v_y, omega)
-z_dim: 2  # Dimension of measurement vector z (2 for Dynamic, 1 for Brg and Brg_rng)
+z_dim: 2  # Dimension of measurement vector z (2 for Mixed, 1 for Brg and Brg_rng)
 v_dim: 3  # Dimension of process noise vector v
 T: 1.0    # Sampling time interval
 sigma_vel: 5.0

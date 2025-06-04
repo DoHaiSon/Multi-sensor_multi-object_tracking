@@ -4,10 +4,11 @@ import os
 from utils.helpers import log_params, plot_sensor_positions
 from sensors.sensor_factory import SensorFactory
 
-class Basic_Model:
+
+class Mixed_Model:
     def __init__(self, args, writer):
         """
-        Initialize basic bearing-range sensor model.
+        Initialize mixed bearing and bearing-range sensor model.
         
         Args:
             args: Arguments from parse_args containing model configuration
@@ -66,9 +67,9 @@ class Basic_Model:
             None
         
         Returns:
-            dict: Sensor configuration dictionary for bearing-range sensors
+            dict: Sensor configuration dictionary with mixed sensor types
         """
-        config_path = os.path.join('configs', 'basic.yaml')
+        config_path = os.path.join('configs', 'sensors', 'mixed.yaml')
         if os.path.exists(config_path):
             with open(config_path, 'r') as f:
                 return yaml.safe_load(f)
@@ -83,26 +84,52 @@ class Basic_Model:
             None
         
         Returns:
-            dict: Default configuration with bearing-range sensor parameters
+            dict: Default configuration with bearing and bearing-range sensors
         """
         return {
             'num_sensors': 4,
             'sensors': {
-                'positions': [[-2000, 0], [2000, 0], [2000, 2000], [-2000, 2000]],
-                'velocities': [[0, 0], [0, 0], [0, -10], [10, 0]],
-                'bearing_range': {
-                    'type': 'brg_rng',
-                    'z_dim': 2,
-                    'noise_std': [0.0349, 100],
-                    'detection_prob': [0.98, 0.98],
-                    'clutter_rate': [10, 15],
-                    'pdf_c': 7.957747e-06
-                },
-                'clutter_ranges': [
-                    [[-1.5708, 1.5708], [0, 4000]],
-                    [[1.5708, 4.7124], [0, 4000]],
-                    [[1.5708, 4.7124], [0, 4000]],
-                    [[-1.5708, 1.5708], [0, 4000]]
+                'sensor_configs': [
+                    {
+                        'type': 'brg',
+                        'position': [-2000, 0],
+                        'z_dim': 1,
+                        'noise_std': 0.1323,
+                        'detection_prob': [0.98, 0.98],
+                        'clutter_rate': [10, 15],
+                        'clutter_range': [0, 6.283185307179586]
+                    },
+                    {
+                        'type': 'brg',
+                        'position': [2000, 0],
+                        'z_dim': 1,
+                        'noise_std': 0.1323,
+                        'detection_prob': [0.98, 0.98],
+                        'clutter_rate': [10, 15],
+                        'clutter_range': [0, 6.283185307179586]
+                    },
+                    {
+                        'type': 'brg_rng',
+                        'position': [2000, 2000],
+                        'velocity': [0, -10],
+                        'z_dim': 2,
+                        'noise_std': [0.0349, 100],
+                        'detection_prob': [0.98, 0.98],
+                        'clutter_rate': [10, 15],
+                        'clutter_range': [[1.5708, 4.7124], [0, 4000]],
+                        'pdf_c': 7.957747e-06
+                    },
+                    {
+                        'type': 'brg_rng',
+                        'position': [-2000, 2000],
+                        'velocity': [10, 0],
+                        'z_dim': 2,
+                        'noise_std': [0.0349, 100],
+                        'detection_prob': [0.98, 0.98],
+                        'clutter_rate': [10, 15],
+                        'clutter_range': [[-1.5708, 1.5708], [0, 4000]],
+                        'pdf_c': 7.957747e-06
+                    }
                 ]
             }
         }
@@ -143,7 +170,7 @@ class Basic_Model:
             None
         
         Returns:
-            list: List of birth model dictionaries for target birth process
+            list: List of birth model dictionaries for target initialization
         """
         birth = []
         positions = self.sensor_config.get('birth_positions', [
@@ -178,39 +205,37 @@ class Basic_Model:
             None
         
         Returns:
-            list: List of bearing-range sensor objects with velocity parameters
+            list: List of mixed sensor objects (bearing and bearing-range)
         """
         sensors = []
         
-        config = self.sensor_config['sensors']
-        positions = config['positions']
-        velocities = config['velocities']
-        bearing_range_config = config['bearing_range']
-        clutter_ranges = config['clutter_ranges']
+        sensor_configs = self.sensor_config['sensors']['sensor_configs']
         
-        num_sensors = self.sensor_config.get('num_sensors', len(positions))
-        
-        for i in range(num_sensors):
-            pos = positions[i]
-            vel = velocities[i]
-            clutter_range = clutter_ranges[i]
+        for i, config in enumerate(sensor_configs):
+            # Prepare sensor configuration for SensorFactory
+            if config['type'] == 'brg':
+                R = config['noise_std'] ** 2
+            else:  # brg_rng
+                R = np.diag([std**2 for std in config['noise_std']])
             
-            # Create sensor configuration for SensorFactory
             sensor_config = {
-                'type': bearing_range_config['type'],
+                'type': config['type'],
                 'id': i,
-                'position': pos,
-                'P_D_rng': bearing_range_config['detection_prob'],
-                'lambda_c_rng': bearing_range_config['clutter_rate'],
-                'R': np.diag([std**2 for std in bearing_range_config['noise_std']]),
-                'range_c': clutter_range
+                'position': config['position'],
+                'P_D_rng': config['detection_prob'],
+                'lambda_c_rng': config['clutter_rate'],
+                'R': R,
+                'range_c': config['clutter_range']
             }
             
             # Create sensor using SensorFactory
             sensor_obj = SensorFactory.create_sensor(sensor_config)
-            # Add velocity if needed for compatibility
-            if hasattr(sensor_obj, 'velocity'):
-                sensor_obj.velocity = np.array(vel)
+            
+            # Add velocity if present
+            if 'velocity' in config:
+                if hasattr(sensor_obj, 'velocity'):
+                    sensor_obj.velocity = np.array(config['velocity'])
+                    
             sensors.append(sensor_obj)
 
         return sensors

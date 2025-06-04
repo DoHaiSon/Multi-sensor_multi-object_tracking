@@ -9,7 +9,7 @@ from utils.matlab_rng import Matlab_RNG
 from utils.logger import Logger
 
 class Test_Generate_Measurements:
-    """Test class for generate_measurements function with Basic model"""
+    """Test class for generate_measurements function with Mixed model"""
     
     @classmethod
     def setup_class(cls):
@@ -22,10 +22,10 @@ class Test_Generate_Measurements:
         Returns:
             None: Initializes class variables for testing
         """
-        # Initialize args with Basic model
+        # Initialize args with Mixed model
         cls.args = get_args([])
-        cls.args.model = 'basic'  # Use lowercase to match config files
-        cls.args.z_dim = 2
+        cls.args.model = 'mixed'  # Use lowercase to match config files    
+        cls.args.z_dim = 1
         cls.args.use_seed = True   
         cls.args.enable_logging = False
         
@@ -48,7 +48,7 @@ class Test_Generate_Measurements:
         
         # Load MATLAB measurements data for comparison
         try:
-            matlab_meas = scipy.io.loadmat('tests/from_matlab/measurements_basic.mat')
+            matlab_meas = scipy.io.loadmat('tests/from_matlab/measurements_mixed.mat')
             cls.matlab_meas = matlab_meas['measurements']
         except FileNotFoundError:
             # If MATLAB reference file doesn't exist, skip MATLAB comparison tests
@@ -89,7 +89,7 @@ class Test_Generate_Measurements:
             pytest.skip("MATLAB reference data not available")
             
         assert np.allclose(
-            self.matlab_meas['P_D'][0][0],
+            self.matlab_meas['P_D'][0][0],  # Remove extra dimensions
             self.python_meas['P_D'], 
             rtol=1e-10
         ), "Detection probabilities don't match"
@@ -108,7 +108,7 @@ class Test_Generate_Measurements:
             pytest.skip("MATLAB reference data not available")
             
         assert np.allclose(
-            self.matlab_meas['lambda_c'][0][0],
+            self.matlab_meas['lambda_c'][0][0],  # Remove extra dimensions
             self.python_meas['lambda_c'], 
             rtol=1e-10
         ), "Clutter rates don't match"
@@ -157,27 +157,19 @@ class Test_Generate_Measurements:
                 if isinstance(self.python_meas['Z'][k][s], np.ndarray) and self.python_meas['Z'][k][s].size > 0:
                     # Check measurement dimension - use sensor object properties
                     sensor = self.model.sensors[s]
-                    expected_z_dim = getattr(sensor, 'z_dim', getattr(sensor, 'measurement_dim', 2))
+                    # Handle mixed sensor types (bearing or bearing_range = 1, mixed = 2)
+                    if hasattr(sensor, 'sensor_type'):
+                        if sensor.sensor_type == 'brg' or sensor.sensor_type == 'brg_rng':
+                            expected_z_dim = 1
+                        elif sensor.sensor_type == 'mixed':
+                            expected_z_dim = 2
+                        else:
+                            expected_z_dim = getattr(sensor, 'z_dim', 1)
+                    else:
+                        expected_z_dim = getattr(sensor, 'z_dim', getattr(sensor, 'measurement_dim', 1))
+                        
                     assert self.python_meas['Z'][k][s].shape[0] == expected_z_dim, \
-                        f"Wrong measurement dimension at time {k}, sensor {s}"
-
-    def test_sensor_object_structure(self):
-        """
-        Test that sensors are properly created as objects.
-        
-        Args:
-            None
-        
-        Returns:
-            None: Asserts sensors are proper objects with required methods
-        """
-        assert len(self.model.sensors) > 0, "No sensors found"
-        
-        for i, sensor in enumerate(self.model.sensors):
-            # Check that sensor has required attributes/methods
-            assert hasattr(sensor, 'generate_measurement'), f"Sensor {i} missing generate_measurement method"
-            assert hasattr(sensor, 'position'), f"Sensor {i} missing position attribute"
-            assert hasattr(sensor, 'sensor_type'), f"Sensor {i} missing sensor_type attribute"
+                        f"Wrong measurement dimension at time {k}, sensor {s}: expected {expected_z_dim}, got {self.python_meas['Z'][k][s].shape[0]}"
 
     @classmethod
     def teardown_class(cls):

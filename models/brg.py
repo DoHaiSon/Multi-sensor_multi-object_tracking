@@ -68,7 +68,7 @@ class Brg_Model:
         Returns:
             dict: Sensor configuration dictionary loaded from YAML or default config
         """
-        config_path = os.path.join('configs', 'brg_only.yaml')
+        config_path = os.path.join('configs', 'sensors', 'brg.yaml')
         if os.path.exists(config_path):
             with open(config_path, 'r') as f:
                 return yaml.safe_load(f)

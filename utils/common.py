@@ -1,9 +1,6 @@
 import os, sys, random
 import numpy as np
 import json
-from models.basic import Basic_Model
-from models.brg import Brg_Model
-from models.brg_rng import Brg_rng_Model
 from core.generate_truth import gen_truth, plot_truth
 from core.generate_measurements import gen_measurements, plot_measurements
 from utils.dataset import save_metadata, save_summary
@@ -67,12 +64,15 @@ def select_model(args, writer):
     # Convert model name to lowercase for consistency with new config structure
     model_name = args.model.lower()
     
-    if model_name in ['basic', 'Basic']:
-        model = Basic_Model(args, writer)
-    elif model_name in ['brg', 'Brg']:
-        model = Brg_Model(args, writer)
-    elif model_name in ['brg_rng', 'Brg_rng']:
+    if model_name in ['brg_rng', 'Brg_rng']:
+        from models.brg_rng import Brg_rng_Model
         model = Brg_rng_Model(args, writer)
+    elif model_name in ['brg', 'Brg']:
+        from models.brg import Brg_Model
+        model = Brg_Model(args, writer)
+    elif model_name in ['mixed', 'Mixed']:
+        from models.mixed import Mixed_Model
+        model = Mixed_Model(args, writer)
     else:
         raise ValueError(f"Invalid model: {args.model}")
     

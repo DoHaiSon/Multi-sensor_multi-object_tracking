@@ -29,32 +29,31 @@ def load_config(config_file):
     
     return config
 
-def get_args(args_list=None):
+def get_args(override_args=None):
     """
-    Parse command line arguments and load YAML configuration.
-    
-    This function:
-    1. Sets up argument parser
-    2. Adds config file argument
-    3. Loads YAML config
-    4. Updates arguments with config values
-    5. Processes special configurations
+    Parse command line arguments and load configuration from YAML file.
     
     Args:
-        args_list (list, optional): List of arguments to parse. If None, uses sys.argv[1:]
+        override_args (list, optional): List of arguments to override command line args.
+            Used primarily for testing. If None, uses sys.argv.
     
     Returns:
-        argparse.Namespace: Namespace containing all configuration parameters
+        Namespace: Parsed arguments with all configuration parameters
     """
-    parser = argparse.ArgumentParser(description='Multi-Sensor Multi-Object Tracking with Random Finite Set Theory')
+    parser = argparse.ArgumentParser(description='Multi-sensor Multi-object Tracking')
+    
+    # Model selection
+    parser.add_argument('--model', type=str, default='brg_rng', 
+                       choices=['brg', 'brg_rng', 'mixed'],
+                       help='Model type: brg (bearing only), brg_rng (bearing-range only), mixed (mixed brg and brg_rng)')
     
     # Add argument for config file path
     parser.add_argument('--config', type=str, default='configs/default.yaml',
                        help='Path to config file')
     
     # Parse command line arguments
-    if args_list is not None:
-        args = parser.parse_args(args_list)
+    if override_args is not None:
+        args = parser.parse_args(override_args)
     else:
         args = parser.parse_args()
     
