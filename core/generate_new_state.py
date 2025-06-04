@@ -4,16 +4,24 @@ def gen_new_state(args, model, target_state, noise_type, rng=None, seed=None):
     """
     Generate new state based on the model and given noise type.
 
-    Parameters:
-    model (dict): Dictionary containing model parameters
-    target_state (np.ndarray): Current state of the target.
-    noise_type (str): Type of noise to apply ('noise' or 'noiseless').
-    rng (Matlab_RNG): Random number generator for testing purposes, optional
-        If provided, will use this instead of numpy's random generator
-    seed: Random seed for reproducible results with numpy.random, optional
+    Args:
+        args (Namespace): Arguments containing model configuration. Contains:
+            - CT: Boolean flag for Constant Turn model vs Constant Velocity
+        model (dict): Dictionary containing model parameters. Contains:
+            - B: Process noise matrix
+            - B2: Extended process noise matrix
+            - T: Time step duration
+        target_state (np.ndarray): Current state of the target (state_dim x 1 or state_dim,)
+        noise_type (str): Type of noise to apply ('noise' or 'noiseless')
+        rng (Matlab_RNG, optional): Random number generator for testing purposes
+            If provided, will use this instead of numpy's random generator
+        seed (int, optional): Random seed for reproducible results with numpy.random
 
     Returns:
-    np.ndarray: New state with or without noise.
+        np.ndarray: New state with or without noise applied (state_dim x 1)
+    
+    Raises:
+        ValueError: If invalid noise_type provided or matrix dimensions don't align
     """
     # Ensure target_state is a 2D array
     if target_state.ndim == 1:
@@ -51,14 +59,17 @@ def gen_new_state(args, model, target_state, noise_type, rng=None, seed=None):
 
 def CT_model(model, Xd):
     """
-    Constant Turn (CT) model.
+    Constant Turn (CT) model for target state prediction.
 
-    Parameters:
-    model (dict): Dictionary containing model parameters including 'T'.
-    Xd (np.ndarray): Current state of the target.
+    Args:
+        model (dict): Dictionary containing model parameters. Contains:
+            - T: Time step duration for state transition
+        Xd (np.ndarray): Current state of the target (5 x num_targets)
+            State vector: [x, vx, y, vy, omega] where omega is turn rate
 
     Returns:
-    np.ndarray: New state using the CT model.
+        np.ndarray: New state using the CT model (5 x num_targets)
+            Predicted state after one time step with constant turn dynamics
     """
     X = np.zeros_like(Xd)
     L = Xd.shape[1]
@@ -84,14 +95,17 @@ def CT_model(model, Xd):
 
 def CV_model(model, Xd):
     """
-    Constant Velocity (CV) model.
+    Constant Velocity (CV) model for target state prediction.
 
-    Parameters:
-    model (dict): Dictionary containing model parameters including 'T'.
-    Xd (np.ndarray): Current state of the target.
+    Args:
+        model (dict): Dictionary containing model parameters. Contains:
+            - T: Time step duration for state transition
+        Xd (np.ndarray): Current state of the target (5 x num_targets)
+            State vector: [x, vx, y, vy, omega] where omega is typically zero
 
     Returns:
-    np.ndarray: New state using the CV model.
+        np.ndarray: New state using the CV model (5 x num_targets)
+            Predicted state after one time step with constant velocity dynamics
     """
     T = model['T']
     X = np.zeros_like(Xd)

@@ -12,12 +12,11 @@ def set_seed(seed):
     """
     Set the seed for generating random numbers to ensure reproducibility.
     
-    Parameters:
-    seed (int): The seed value to use for random number generation.
+    Args:
+        seed (int): The seed value to use for random number generation
     
-    This function sets the seed for:
-    - Python's built-in random module
-    - NumPy's random module
+    Returns:
+        None: Sets seeds for Python's random module and NumPy's random module
     """
     random.seed(seed)  # For Python random
     np.random.seed(seed)  # For NumPy random
@@ -26,14 +25,12 @@ def load_configurations(args, writer):
     """
     Load and print the configuration settings, and log them to TensorBoard.
 
-    Parameters:
-    args (Namespace): The arguments containing the configuration settings.
-    writer (SummaryWriter): The TensorBoard SummaryWriter instance for logging.
+    Args:
+        args (Namespace): The arguments containing the configuration settings
+        writer (SummaryWriter): The TensorBoard SummaryWriter instance for logging
     
-    This function performs the following tasks:
-    - Prints the configuration settings to the console.
-    - Formats the configuration settings as a markdown-style table.
-    - Logs the formatted configuration settings to TensorBoard.
+    Returns:
+        None: Prints configuration to console and logs to TensorBoard
     """
     # Print the argument summary
     if args.verbose:
@@ -57,18 +54,24 @@ def select_model(args, writer):
     """
     Select the appropriate model based on the configuration settings.
 
-    Parameters:
-    args (Namespace): The arguments containing the configuration settings.
-    writer (SummaryWriter): The TensorBoard SummaryWriter instance for logging.
+    Args:
+        args (Namespace): The arguments containing the configuration settings
+        writer (SummaryWriter): The TensorBoard SummaryWriter instance for logging
 
     Returns:
-    model: The selected model based on the configuration settings.
+        model: The selected model instance based on the configuration settings
+    
+    Raises:
+        ValueError: If an invalid model type is specified
     """
-    if args.model == 'Basic':
+    # Convert model name to lowercase for consistency with new config structure
+    model_name = args.model.lower()
+    
+    if model_name in ['basic', 'Basic']:
         model = Basic_Model(args, writer)
-    elif args.model == 'Brg':
+    elif model_name in ['brg', 'Brg']:
         model = Brg_Model(args, writer)
-    elif args.model == 'Brg_rng':
+    elif model_name in ['brg_rng', 'Brg_rng']:
         model = Brg_rng_Model(args, writer)
     else:
         raise ValueError(f"Invalid model: {args.model}")
@@ -76,7 +79,26 @@ def select_model(args, writer):
     return model
 
 def load_dataset(args, writer):
-    """Load existing dataset from dataset_dir structure."""
+    """
+    Load existing dataset from dataset_dir structure.
+    
+    Args:
+        args (Namespace): Arguments containing dataset configuration. Contains:
+            - dataset_dir: Directory containing saved datasets
+            - scenario: Scenario name for dataset identification
+            - K: Number of time steps
+            - enable_logging: Whether to enable visualization logging
+        writer (SummaryWriter): TensorBoard writer for logging visualizations
+    
+    Returns:
+        tuple: (truth, measurements, model) where:
+            - truth: Ground truth data dictionary
+            - measurements: Measurements data dictionary  
+            - model: Recreated model instance with sensor configurations
+    
+    Raises:
+        FileNotFoundError: If dataset directory, metadata, or summary files not found
+    """
     scenario_name = getattr(args, 'scenario', 'default')
     scenario_dir = os.path.join(args.dataset_dir, f'scenario_{scenario_name}')
     
@@ -162,7 +184,25 @@ def load_dataset(args, writer):
     return truth, measurements, model
 
 def create_dataset(args, writer, seed=None):
-    """Create a complete dataset including ground truth and measurements."""
+    """
+    Create a complete dataset including ground truth and measurements.
+    
+    Args:
+        args (Namespace): Arguments containing dataset configuration. Contains:
+            - K: Number of time steps
+            - save_dataset: Whether to save generated dataset
+            - scenario: Scenario name for dataset saving
+            - dataset_dir: Directory for saving datasets
+            - enable_logging: Whether to enable visualization logging
+        writer (SummaryWriter): TensorBoard writer for logging visualizations
+        seed (int, optional): Random seed for reproducible dataset generation
+    
+    Returns:
+        tuple: (truth, measurements, model) where:
+            - truth: Generated ground truth data dictionary
+            - measurements: Generated measurements data dictionary
+            - model: Model instance used for generation
+    """
     print("\n===== Creating dataset =====")
 
     # Generate model

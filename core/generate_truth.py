@@ -93,11 +93,19 @@ def plot_truth(truth, t1, t2, writer, global_step=0):
     Plot ground truth tracks and save to TensorBoard.
     
     Args:
-        truth: Dictionary containing ground truth data
-        t1: Start time
-        t2: End time
-        writer: TensorBoard writer
-        global_step: Current step for TensorBoard logging
+        truth (dict): Dictionary containing ground truth data. Contains:
+            - X: List of target states for each time step
+            - track_list: Absolute index target identities for plotting
+            - total_tracks: Total number of appearing tracks
+            - K: Number of time steps
+            - N: Number of targets at each time step
+        t1 (int): Start time step for plotting
+        t2 (int): End time step for plotting
+        writer (SummaryWriter): TensorBoard writer for logging figures
+        global_step (int, optional): Current step for TensorBoard logging
+    
+    Returns:
+        None: Creates and logs plots to TensorBoard, then cleans up memory
     """
     # Create figure with high DPI
     plt.figure(figsize=(10, 10), dpi=300)
@@ -225,6 +233,17 @@ def plot_truth(truth, t1, t2, writer, global_step=0):
 def extract_tracks(X, track_list, total_tracks):
     """
     Convert list of states and track lists to 3D array of tracks.
+    
+    Args:
+        X (list): List of state matrices for each time step
+        track_list (list): List of track identities for each time step
+        total_tracks (int): Total number of tracks in the scenario
+    
+    Returns:
+        tuple: (X_track, k_birth, k_death) where:
+            - X_track: 3D array (state_dim x K x total_tracks) of track states
+            - k_birth: Array of birth times for each track
+            - k_death: Array of death times for each track
     """
     K = len(X)
     

@@ -4,7 +4,7 @@
 model: 'Basic'  # choices: ['Basic', 'Brg', 'Brg_rng']
 P_D: 0.95
 lambda_c: 10
-K: 100
+K: 20
 
 # Dynamic parameters
 x_dim: 5  # Dimension of state vector x (x, v_x, y, v_y, omega)
@@ -12,7 +12,7 @@ z_dim: 2  # Dimension of measurement vector z (2 for Dynamic, 1 for Brg and Brg_
 v_dim: 3  # Dimension of process noise vector v
 T: 1.0    # Sampling time interval
 sigma_vel: 5.0
-sigma_turn: 0.017453292519943295  # np.pi/180
+sigma_turn: 0.017453292519943295  # pi/180
 
 # Survival/death parameters
 P_S: 0.95
@@ -22,16 +22,8 @@ P_S_clt: 0.9
 # Birth parameters
 fixed_birth: true
 
-# Observation parameters
-num_sensors: 4  # Number of sensors (1-6)
-pdf_c: 7.957747154594767e-08  # 1/(np.pi * 4000)
-range_c_1: [-1.5707963267948966, 1.5707963267948966, 0, 4000]  # [-np.pi/2, np.pi/2, 0, 4000]
-range_c_2: [1.5707963267948966, 4.71238898038469, 0, 4000]     # [np.pi/2, 3*np.pi/2, 0, 4000]
-D: [0.034906585039886595, 10]  # [2*np.pi/180, 10]
+# Motion model
 CT: true
-# Sensor noise parameters
-bearing_D: 0.003490658503988659  # 0.2*np.pi/180
-range_D: 10.0
 
 # Scenario parameters
 scenario: 'scenario1'

@@ -12,3 +12,42 @@ bearing_D: 0.005235987755982988  # 0.3*np.pi/180
 scenario: 'scenario1'
 
 dataset_dir: './data/brg_tracking'
+
+# Inherits from default.yaml for basic parameters
+# Sensor-specific configurations for bearing-only model
+
+# Model configuration
+model: 'brg'
+num_sensors: 6
+
+# Sensor configurations
+sensors:
+  positions:
+    - [-2000, 0]
+    - [2000, 0]
+    - [2000, 2000]
+    - [-2000, 2000]
+    - [0, 2000]
+    - [0, 0]
+    
+  # Bearing-only sensor parameters
+  bearing:
+    type: 'brg'
+    z_dim: 1
+    noise_std: 0.1323  # Bearing noise standard deviation
+    detection_prob: [0.98, 0.98]
+    clutter_rate: [10, 15]
+    clutter_range: [0, 6.283185307179586]  # [0, 2*pi]
+
+# Birth model positions  
+birth_positions:
+  - [-1500, 0, 250, 0, 0]
+  - [-250, 0, 1000, 0, 0]
+  - [250, 0, 750, 0, 0]
+  - [1000, 0, 1500, 0, 0]
+
+birth_covariance_diag: [50, 50, 50, 50, 0.1047]
+
+# Observation parameters specific to bearing-only model
+bearing_D: 0.1323  # Bearing measurement noise
+clutter_range_bearing: [0, 6.283185307179586]  # [0, 2*pi]

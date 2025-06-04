@@ -1,10 +1,26 @@
 import numpy as np
+import yaml
+import os
 from utils.helpers import log_params, plot_sensor_positions
+from sensors.sensor_factory import SensorFactory
 
 class Basic_Model:
     def __init__(self, args, writer):
+        """
+        Initialize basic bearing-range sensor model.
+        
+        Args:
+            args: Arguments from parse_args containing model configuration
+            writer: TensorboardX SummaryWriter for logging parameters
+        
+        Returns:
+            None: Initializes all model components
+        """
         self.args = args
         self.writer = writer
+
+        # Load sensor configuration from YAML
+        self.sensor_config = self.load_sensor_config()
 
         # Initialize dynamics
         self.dynamics = {
@@ -34,7 +50,7 @@ class Basic_Model:
         self.birth = self.initialize_birth_model()
 
         # Multisensor observation model
-        self.sensors = self.initialize_sensors([self.args.P_D, self.args.P_D], [self.args.lambda_c, self.args.lambda_c])
+        self.sensors = self.initialize_sensors()
 
         # Log dynamics to TensorBoard
         log_params(args, self, self.writer)
@@ -42,20 +58,75 @@ class Basic_Model:
         # Visualize sensor positions
         plot_sensor_positions(self, self.writer)
 
+    def load_sensor_config(self):
+        """
+        Load sensor configuration from YAML file.
+        
+        Args:
+            None
+        
+        Returns:
+            dict: Sensor configuration dictionary for bearing-range sensors
+        """
+        config_path = os.path.join('configs', 'basic.yaml')
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                return yaml.safe_load(f)
+        else:
+            return self.get_default_config()
+    
+    def get_default_config(self):
+        """
+        Get default configuration if YAML file is not found.
+        
+        Args:
+            None
+        
+        Returns:
+            dict: Default configuration with bearing-range sensor parameters
+        """
+        return {
+            'num_sensors': 4,
+            'sensors': {
+                'positions': [[-2000, 0], [2000, 0], [2000, 2000], [-2000, 2000]],
+                'velocities': [[0, 0], [0, 0], [0, -10], [10, 0]],
+                'bearing_range': {
+                    'type': 'brg_rng',
+                    'z_dim': 2,
+                    'noise_std': [0.0349, 100],
+                    'detection_prob': [0.98, 0.98],
+                    'clutter_rate': [10, 15],
+                    'pdf_c': 7.957747e-06
+                },
+                'clutter_ranges': [
+                    [[-1.5708, 1.5708], [0, 4000]],
+                    [[1.5708, 4.7124], [0, 4000]],
+                    [[1.5708, 4.7124], [0, 4000]],
+                    [[-1.5708, 1.5708], [0, 4000]]
+                ]
+            }
+        }
+
     def calculate_noise_matrices(self):
         """
         Calculate noise-related variables in the dynamics dictionary.
+        
+        Args:
+            None
+        
+        Returns:
+            None: Updates self.dynamics with computed matrices bt, B2, B, Q
         """
         # Calculate bt (2x1 vector)
         self.dynamics['bt'] = self.dynamics['sigma_vel'] * np.array([(self.dynamics['T'] ** 2) / 2, self.dynamics['T']])
 
-        # Calculate B2 (5x3 matrix) correctly matching MATLAB structure
+        # Calculate B2 (5x3 matrix)
         self.dynamics['B2'] = np.array([
-            [self.dynamics['bt'][0], 0.0, 0.0],             # First row
-            [self.dynamics['bt'][1], 0.0, 0.0],             # Second row
-            [0.0, self.dynamics['bt'][0], 0.0],             # Third row
-            [0.0, self.dynamics['bt'][1], 0.0],             # Fourth row
-            [0.0, 0.0, self.dynamics['T'] * self.dynamics['sigma_turn']]  # Fifth row
+            [self.dynamics['bt'][0], 0.0, 0.0],
+            [self.dynamics['bt'][1], 0.0, 0.0],
+            [0.0, self.dynamics['bt'][0], 0.0],
+            [0.0, self.dynamics['bt'][1], 0.0],
+            [0.0, 0.0, self.dynamics['T'] * self.dynamics['sigma_turn']]
         ])
 
         # Calculate B (identity matrix with size v_dim)
@@ -66,16 +137,24 @@ class Basic_Model:
 
     def initialize_birth_model(self):
         """
-        Initialize birth model parameters.
+        Initialize birth model parameters from config.
+        
+        Args:
+            None
+        
+        Returns:
+            list: List of birth model dictionaries for target birth process
         """
         birth = []
-        positions = [
+        positions = self.sensor_config.get('birth_positions', [
             [-1500, 0, 250, 0, 0],
             [-250, 0, 1000, 0, 0],
             [250, 0, 750, 0, 0],
             [1000, 0, 1500, 0, 0]
-        ]
-        B_diag = np.diag([50, 50, 50, 50, 6*(np.pi/180)])
+        ])
+        
+        diag_values = self.sensor_config.get('birth_covariance_diag', [50, 50, 50, 50, 0.1047])
+        B_diag = np.diag(diag_values)
         P = np.dot(B_diag, B_diag)
         
         for position in positions:
@@ -91,55 +170,47 @@ class Basic_Model:
         
         return birth
 
-    def initialize_sensors(self, detect_prob, clutter_rate):
+    def initialize_sensors(self):
         """
-        Initialize sensor parameters.
+        Initialize sensor parameters from config.
+        
+        Args:
+            None
+        
+        Returns:
+            list: List of bearing-range sensor objects with velocity parameters
         """
         sensors = []
-        pdf_c = self.args.pdf_c
-        range_c_1 = np.array(self.args.range_c_1).reshape(2, 2)
-        range_c_2 = np.array(self.args.range_c_2).reshape(2, 2)
-        D = np.diag(self.args.D)
-        R = np.dot(D, D)
-        w_dim = self.args.z_dim
-
-        positions = [
-            [-2000, 0],
-            [2000, 0],
-            [2000, 2000],
-            [-2000, 2000]
-        ]
-        velocities = [
-            [0, 0],
-            [0, 0],
-            [0, -10],
-            [10, 0]
-        ]
-        ranges = [range_c_1, range_c_2, range_c_2, range_c_1]
         
-        # Only create the number of sensors specified in config
-        num_sensors = getattr(self.args, 'num_sensors', 4)
+        config = self.sensor_config['sensors']
+        positions = config['positions']
+        velocities = config['velocities']
+        bearing_range_config = config['bearing_range']
+        clutter_ranges = config['clutter_ranges']
+        
+        num_sensors = self.sensor_config.get('num_sensors', len(positions))
+        
         for i in range(num_sensors):
             pos = positions[i]
             vel = velocities[i]
-            rng = ranges[i]
+            clutter_range = clutter_ranges[i]
             
-            sensor = {
-                'type': 'brg_rng',
-                'z_dim': self.args.z_dim,
-                'w_dim': w_dim,
-                'X': np.array(pos),
-                'v': np.array(vel),
-                'D': D,
-                'R': R,
-                'P_D_rng': detect_prob,
-                'P_D': np.mean(detect_prob),
-                'Q_D': 1 - np.mean(detect_prob),
-                'lambda_c_rng': clutter_rate,
-                'lambda_c': np.mean(clutter_rate),
-                'range_c': rng,
-                'pdf_c': pdf_c
+            # Create sensor configuration for SensorFactory
+            sensor_config = {
+                'type': bearing_range_config['type'],
+                'id': i,
+                'position': pos,
+                'P_D_rng': bearing_range_config['detection_prob'],
+                'lambda_c_rng': bearing_range_config['clutter_rate'],
+                'R': np.diag([std**2 for std in bearing_range_config['noise_std']]),
+                'range_c': clutter_range
             }
-            sensors.append(sensor)
-        
+            
+            # Create sensor using SensorFactory
+            sensor_obj = SensorFactory.create_sensor(sensor_config)
+            # Add velocity if needed for compatibility
+            if hasattr(sensor_obj, 'velocity'):
+                sensor_obj.velocity = np.array(vel)
+            sensors.append(sensor_obj)
+
         return sensors

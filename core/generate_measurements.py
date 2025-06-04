@@ -51,8 +51,12 @@ def gen_measurements(args, sensors, truth, rng=None, seed=None):
                 seed_pd = seed_meas = seed_nc = seed_clutter = None
 
             if truth['N'][k] > 0:
-                # Get P_D (first-half, second-half)
-                P_D = sensors[s]['P_D_rng'][0]
+                # Get P_D for first-half or second-half - use sensor object attributes
+                sensor = sensors[s]
+                if hasattr(sensor, 'P_D_rng'):
+                    P_D = sensor.P_D_rng[0]
+                else:
+                    P_D = getattr(sensor, 'detection_prob', [0.95, 0.95])[0]
                 
                 # Generate detection indicators using provided RNG or numpy
                 if rng is not None:
@@ -71,8 +75,12 @@ def gen_measurements(args, sensors, truth, rng=None, seed=None):
                 else:
                     meas['Z'][k][s] = np.array([])
             
-            # Get clutter rate (first-half, second-half)
-            lambda_c = sensors[s]['lambda_c_rng'][0] if k < 50 else sensors[s]['lambda_c_rng'][1]
+            # Get clutter rate for first-half or second-half - use sensor object attributes
+            sensor = sensors[s]
+            if hasattr(sensor, 'lambda_c_rng'):
+                lambda_c = sensor.lambda_c_rng[0] if k < 50 else sensor.lambda_c_rng[1]
+            else:
+                lambda_c = getattr(sensor, 'clutter_rate', [10, 15])[0] if k < 50 else getattr(sensor, 'clutter_rate', [10, 15])[1]
             meas['lambda_c'][k,s] = lambda_c
             
             # Generate clutter using provided RNG or numpy
@@ -84,7 +92,12 @@ def gen_measurements(args, sensors, truth, rng=None, seed=None):
                 N_c = np.random.poisson(lambda_c)  # NumPy random
             
             if N_c > 0:
-                range_c = sensors[s]['range_c']
+                # Get range_c from sensor object
+                if hasattr(sensor, 'range_c'):
+                    range_c = sensor.range_c
+                else:
+                    range_c = getattr(sensor, 'clutter_range', [[0, 2*np.pi], [0, 4000]])
+                range_c = np.array(range_c)
                 
                 # Handle both 1D and 2D range_c
                 if range_c.ndim == 1:
@@ -100,18 +113,18 @@ def gen_measurements(args, sensors, truth, rng=None, seed=None):
                     if rng is not None:
                         C = np.tile(range_c[:,0][:,None], [1, N_c]) + \
                             np.diag(range_c @ [-1, 1]) @ \
-                            rng.rand(sensors[s]['z_dim'], N_c, seed=seed_clutter)  # Matlab_RNG
+                            rng.rand(getattr(sensor, 'z_dim', 2), N_c, seed=seed_clutter)  # Matlab_RNG
                     else:
                         if seed_clutter is not None:
                             np.random.seed(seed_clutter)
                         C = np.tile(range_c[:,0][:,None], [1, N_c]) + \
                             np.diag(range_c @ [-1, 1]) @ \
-                            np.random.rand(sensors[s]['z_dim'], N_c)  # NumPy random
+                            np.random.rand(getattr(sensor, 'z_dim', 2), N_c)  # NumPy random
                 # Combine target measurements and clutter
                 if len(meas['Z'][k][s]) > 0:
                     # Ensure both matrices have the same number of rows for hstack
                     if isinstance(meas['Z'][k][s], np.ndarray):
-                        # If measurement is a vector, reshape it to a 2x1 matrix
+                        # If measurement is a vector, reshape it to a matrix
                         if meas['Z'][k][s].ndim == 1:
                             meas['Z'][k][s] = meas['Z'][k][s].reshape(-1, 1)
                         # If clutter is a vector, reshape it to match measurement dimension
@@ -133,16 +146,12 @@ def gen_measurements(args, sensors, truth, rng=None, seed=None):
 
 def gen_MS_observation(sensors, s, X, W, rng=None, seed=None):
     """
-    Generate observations for multiple sensors.
+    Generate observations for multiple sensors using sensor class methods.
     
     Args:
-        sensors: List of sensor models, each model contains:
-            - type: Sensor type ('brg', 'rng', 'brg_rr', etc.)
-            - z_dim: Measurement dimension
-            - R: Measurement noise covariance
-            - X: Sensor position [x, y] or [x, y, z]
+        sensors: List of sensor objects or sensor dictionaries
         s: Sensor index
-        X: Target states matrix (state_dim × num_targets)
+        X: Target states matrix (state_dim x num_targets)
         W: Noise type ('noise', 'noiseless') or noise matrix
         rng: Random number generator (Matlab_RNG instance), optional
             If None, will use numpy's default random generator
@@ -150,195 +159,67 @@ def gen_MS_observation(sensors, s, X, W, rng=None, seed=None):
             If provided, will be used for noise generation
     
     Returns:
-        Z: Measurement matrix (z_dim × num_targets)
+        Z: Measurement matrix (z_dim x num_targets)
+            Generated measurements from the specified sensor
     """
-    if not isinstance(W, np.ndarray):
-        if W == 'noise':
-            if rng is not None:
-                W = rng.multivariate_normal(
-                    mean=np.zeros(sensors[s]['z_dim']), 
-                    cov=sensors[s]['R'], 
-                    size=X.shape[1],
-                    seed=seed).T  # Matlab_RNG
-            else:
-                if seed is not None:
-                    np.random.seed(seed)
-                if np.isscalar(sensors[s]['R']) or sensors[s]['R'].size == 1:
-                    # For scalar covariance (e.g., bearing-only sensors)
-                    W = np.random.normal(0, np.sqrt(float(sensors[s]['R'])), 
-                                    size=(1, X.shape[1]))
-                else:
-                    # For matrix covariance
-                    W = np.random.multivariate_normal(
-                        mean=np.zeros(sensors[s]['z_dim']), 
-                        cov=sensors[s]['R'], 
-                        size=X.shape[1]).T  # NumPy random
-        elif W == 'noiseless':
-            W = np.zeros((sensors[s]['R'].shape[0], X.shape[1]))
-
     if X.size == 0:
         return np.array([])
     
-    sensor_type = sensors[s]['type']
+    sensor = sensors[s]
     
-    if sensor_type == 'brg':        # Bearing-only sensor
-        #! TODO: need to check arctan(y, x) vs arctan(x, y)
-        Z = np.arctan2(X[0,:] - sensors[s]['X'][0],     # x (first parameter in MATLAB)
-                       X[2,:] - sensors[s]['X'][1])     # y (second parameter in MATLAB)
-        
-        # Handle vector case for bearing-only measurements
-        if isinstance(W, np.ndarray) and W.ndim == 1:
-            Z = Z.flatten()
+    # Check if sensor has generate_measurement method (new sensor class)
+    if hasattr(sensor, 'generate_measurement'):
+        # Use new sensor class method
+        if W == 'noise':
+            return sensor.generate_measurement(X, add_noise=True, rng=rng, seed=seed)
+        elif W == 'noiseless':
+            return sensor.generate_measurement(X, add_noise=False, rng=rng, seed=seed)
         else:
-            Z = Z.reshape(1, -1)  # Ensure 2D for matrix case
-        Z = Z + W
-        Z = np.mod(Z, 2*np.pi)
-
-    elif sensor_type == 'rng':      # Range-only sensor
-        Z = np.sqrt((sensors[s]['X'][0] - X[0,:])**2 + 
-                    (sensors[s]['X'][1] - X[2,:])**2)
-        # Handle vector case for range-only measurements
-        if isinstance(W, np.ndarray) and W.ndim == 1:
-            Z = Z.flatten()
-        else:
-            Z = Z.reshape(1, -1)  # Ensure 2D for matrix case
-        Z = Z + W
-        
-    elif sensor_type == 'brg_rr':       # Bearing and Range Rate sensors: Doppler radar systems, Air traffic control radar
-        relpos = X[[0,2],:] - sensors[s]['X'][:,None]
-        relvel = X[[1,3],:]
-        rng = np.sqrt(np.sum(relpos**2, axis=0))
-        
-        if isinstance(W, np.ndarray) and W.ndim == 1:
-            # Vector case
-            Z = np.zeros(2)
-            Z[0] = np.arctan2(relpos[0,0], relpos[1,0])
-            Z[1] = np.sum(relpos[:,0] * relvel[:,0]) / rng[0]
-        else:
-            # Matrix case
-            Z = np.zeros((2, X.shape[1]))
-            Z[0,:] = np.arctan2(relpos[0,:], relpos[1,:])
-            Z[1,:] = np.sum(relpos * relvel, axis=0) / rng
-        
-        Z = Z + W
-        if Z.ndim > 1:
-            Z[0,:] = np.mod(Z[0,:], 2*np.pi)
-        else:
-            Z[0] = np.mod(Z[0], 2*np.pi)
-        
-    elif sensor_type == 'pos':      # x and y coordinates
-        if isinstance(W, np.ndarray) and W.ndim == 1:
-            # Vector case
-            Z = np.zeros(2)
-            Z[0:2] = X[[0,2],0]
-        else:
-            # Matrix case
-            Z = np.zeros((2, X.shape[1]))
-            Z[0:2,:] = X[[0,2],:]
-        Z = Z + W
-        
-    elif sensor_type == 'pos_3D':       # x, y, and z coordinates
-        if isinstance(W, np.ndarray) and W.ndim == 1:
-            # Vector case
-            Z = np.zeros(3)
-            Z[0:3] = X[[0,2,4],0]
-        else:
-            # Matrix case
-            Z = np.zeros((3, X.shape[1]))
-            Z[0:3,:] = X[[0,2,4],:]
-        Z = Z + W
-        
-    elif sensor_type == 'brg_rng':      # Bearing-range sensor
-        relpos = X[[0,2],:] - sensors[s]['X'][:,None]
-        rng = np.sqrt(np.sum(relpos**2, axis=0))
-        
-        if isinstance(W, np.ndarray) and W.ndim == 1:
-            # Vector case
-            Z = np.zeros(2)
-            Z[0] = np.arctan2(relpos[1,0], relpos[0,0])
-            Z[1] = rng[0]
-        else:
-            # Matrix case
-            Z = np.zeros((2, X.shape[1]))
-            Z[0,:] = np.arctan2(relpos[1,:], relpos[0,:])
-            Z[1,:] = rng
-            
-        Z = Z + W
-        if Z.ndim > 1:
-            Z[0,:] = np.mod(Z[0,:], 2*np.pi)
-        else:
-            Z[0] = np.mod(Z[0], 2*np.pi)
-            
-    elif sensor_type == 'az_el_rng':        # Azimuth, Elevation, and Range sensor: 3D scanning LiDAR
-        relpos = X[[0,2,5],:] - sensors[s]['X'][:,None]
-        relvel = X[[1,3,6],:]
-        rng = np.sqrt(np.sum(relpos**2, axis=0))
-        
-        if isinstance(W, np.ndarray) and W.ndim == 1:
-            # Vector case
-            Z = np.zeros(4)
-            xy_rng = relpos[0:2,0]
-            xy_rng = np.sqrt(np.sum(xy_rng**2))
-            Z[0] = np.arctan2(relpos[0,0], relpos[1,0])
-            Z[1] = np.arctan2(xy_rng, relpos[2,0])
-            Z[2] = rng[0]
-            Z[3] = np.sum(relpos[:,0] * relvel[:,0]) / rng[0]
-        else:
-            # Matrix case
-            Z = np.zeros((4, X.shape[1]))
-            xy_rng = relpos[0:2,:]
-            xy_rng = np.sqrt(np.sum(xy_rng**2, axis=0))
-            Z[0,:] = np.arctan2(relpos[0,:], relpos[1,:])
-            Z[1,:] = np.arctan2(xy_rng, relpos[2,:])
-            Z[2,:] = rng
-            Z[3,:] = np.sum(relpos * relvel, axis=0) / rng
-            
-        Z = Z + W
-        if Z.ndim > 1:
-            Z[0,:] = np.mod(Z[0,:] + np.pi, 2*np.pi) - np.pi
-            Z[1,:] = np.mod(Z[1,:] + np.pi, 2*np.pi) - np.pi
-        else:
-            Z[0] = np.mod(Z[0] + np.pi, 2*np.pi) - np.pi
-            Z[1] = np.mod(Z[1] + np.pi, 2*np.pi) - np.pi
-            
-    elif sensor_type == 'brg_rng_rngrt':        # Bearing, Range, and Range Rate sensor: Modern military tracking radar
-        relpos = X[[0,2],:] - sensors[s]['X'][:,None]
-        relvel = X[[1,3],:]
-        rng = np.sqrt(np.sum(relpos**2, axis=0))
-        
-        if isinstance(W, np.ndarray) and W.ndim == 1:
-            # Vector case
-            Z = np.zeros(3)
-            Z[0] = np.arctan2(relpos[0,0], relpos[1,0])
-            Z[1] = rng[0]
-            Z[2] = np.sum(relpos[:,0] * relvel[:,0]) / rng[0]
-        else:
-            # Matrix case
-            Z = np.zeros((3, X.shape[1]))
-            Z[0,:] = np.arctan2(relpos[0,:], relpos[1,:])
-            Z[1,:] = rng
-            Z[2,:] = np.sum(relpos * relvel, axis=0) / rng
-            
-        Z = Z + W
-        if Z.ndim > 1:
-            Z[0,:] = np.mod(Z[0,:], 2*np.pi)
-        else:
-            Z[0] = np.mod(Z[0], 2*np.pi)
-            
-    return Z
+            # W is a noise matrix
+            Z = sensor.generate_measurement(X, add_noise=False, rng=rng, seed=seed)
+            return Z + W
+    else:
+        # For backward compatibility with dictionary-based sensors
+        # Convert to sensor object temporarily
+        from sensors.sensor_factory import SensorFactory
+        try:
+            sensor_obj = SensorFactory.create_sensor({
+                'type': sensor['type'],
+                'id': s,
+                'position': sensor['X'],
+                'P_D_rng': sensor['P_D_rng'],
+                'lambda_c_rng': sensor['lambda_c_rng'],
+                'R': sensor['R'],
+                'range_c': sensor['range_c']
+            })
+            if W == 'noise':
+                return sensor_obj.generate_measurement(X, add_noise=True, rng=rng, seed=seed)
+            elif W == 'noiseless':
+                return sensor_obj.generate_measurement(X, add_noise=False, rng=rng, seed=seed)
+            else:
+                Z = sensor_obj.generate_measurement(X, add_noise=False, rng=rng, seed=seed)
+                return Z + W
+        except Exception as e:
+            raise ValueError(f"Cannot process sensor {s}: {e}")
 
 def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer):
     """
     Plot measurements and ground truth from start_k to end_k.
     
     Args:
-        args: Arguments from parse_args
-        truth: Ground truth data dictionary
-        measurements: Measurements dictionary
-        sensors: List of sensor models
-        start_k: Start time step
-        end_k: End time step
-        writer: tensorboardX SummaryWriter
+        args: Arguments from parse_args containing configuration parameters
+        truth: Ground truth data dictionary. Contains:
+            - N: Number of targets at each time step
+            - X: List of target states for each time step
+        measurements: Measurements dictionary. Contains:
+            - Z: List of measurements for each sensor at each time step
+        sensors: List of sensor models (objects or dictionaries)
+        start_k: Start time step for plotting
+        end_k: End time step for plotting
+        writer: TensorboardX SummaryWriter for logging video
+    
+    Returns:
+        None: Function saves video to TensorBoard and cleans up memory
     """
     from io import BytesIO
     from PIL import Image
@@ -360,39 +241,50 @@ def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer
         
         # Plot sensor positions and their measurements
         for s in range(len(sensors)):
+            sensor = sensors[s]
+            
+            # Get sensor position and type - handle both object and dict formats
+            if hasattr(sensor, 'position'):
+                sensor_pos = sensor.position
+                sensor_type = getattr(sensor, 'sensor_type', 'unknown')
+            else:
+                # Fallback for dictionary-based sensors
+                sensor_pos = sensor['X']
+                sensor_type = sensor['type']
+            
             # Plot sensor position
-            ax.scatter(sensors[s]['X'][0], sensors[s]['X'][1],
+            ax.scatter(sensor_pos[0], sensor_pos[1],
                       c=[sensor_colors[s]], marker='*', s=200,
                       label=f'Sensor {s+1}')
             
             # Plot measurements for this sensor
             if len(measurements['Z'][k][s]) > 0:
-                if sensors[s]['type'] in ['pos', 'pos_3D']:
+                if sensor_type in ['pos', 'pos_3D']:
                     # Direct position measurements
                     ax.scatter(measurements['Z'][k][s][0,:], 
                              measurements['Z'][k][s][1,:],
                              c=[sensor_colors[s]], marker='o', s=64,
                              alpha=0.5)
-                elif sensors[s]['type'] in ['brg_rng', 'brg_rng_rngrt']:
+                elif sensor_type in ['brg_rng', 'brg_rng_rngrt']:
                     # Convert polar to Cartesian for plotting
                     for i in range(measurements['Z'][k][s].shape[1]):
                         brg = measurements['Z'][k][s][0,i]
                         rng = measurements['Z'][k][s][1,i]
-                        x = sensors[s]['X'][0] + rng * np.cos(brg)
-                        y = sensors[s]['X'][1] + rng * np.sin(brg)
+                        x = sensor_pos[0] + rng * np.cos(brg)
+                        y = sensor_pos[1] + rng * np.sin(brg)
                         ax.scatter(x, y,
                                  c=[sensor_colors[s]], marker='o', s=64,
                                  alpha=0.5)
-                elif sensors[s]['type'] == 'brg':
+                elif sensor_type == 'brg':
                     # Plot bearing measurements as lines from sensor position
                     for i in range(measurements['Z'][k][s].shape[1]):
                         brg = measurements['Z'][k][s][0,i]
                         # Plot a line in the bearing direction
                         line_length = 4000  # Same as plot limits
-                        x = sensors[s]['X'][0] + line_length * np.cos(brg)
-                        y = sensors[s]['X'][1] + line_length * np.sin(brg)
-                        ax.plot([sensors[s]['X'][0], x],
-                               [sensors[s]['X'][1], y],
+                        x = sensor_pos[0] + line_length * np.cos(brg)
+                        y = sensor_pos[1] + line_length * np.sin(brg)
+                        ax.plot([sensor_pos[0], x],
+                               [sensor_pos[1], y],
                                c=sensor_colors[s], alpha=0.3)
         
         # Set plot properties

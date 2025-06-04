@@ -3,10 +3,14 @@ import functools
 
 def setup_print(verbose=True):
     """
-    Set up global print function based on verbose flag
+    Set up global print function based on verbose flag.
     
     Args:
-        verbose: bool, default=True
+        verbose (bool, optional): Whether to enable printing. Defaults to True.
+            If False, all print statements will be suppressed globally
+    
+    Returns:
+        function: Original print function in case restoration is needed
     """
     # Store original print
     original_print = builtins.print

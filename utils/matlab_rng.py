@@ -6,14 +6,16 @@ class Matlab_RNG:
     Wrapper class for MATLAB random number generator in Python.
     This class ensures random numbers match MATLAB's output exactly.
     """
+    
     def __init__(self, seed=None):
         """
         Initialize MATLAB engine and set random seed.
 
-        Parameters:
-        -----------
-        seed : int, optional
-            Random seed for reproducibility
+        Args:
+            seed (int, optional): Random seed for reproducibility
+        
+        Returns:
+            None: Initializes MATLAB engine and optionally sets seed
         """
         self.eng = matlab.engine.start_matlab()
         if seed is not None:
@@ -21,19 +23,31 @@ class Matlab_RNG:
             self._set_seed(self.seed)
 
     def _set_seed(self, seed):
-        """Reset random seed to initial value"""
+        """
+        Reset random seed to initial value.
+        
+        Args:
+            seed (int): Random seed value to set
+        
+        Returns:
+            None: Sets MATLAB random seed
+        """
         self.eng.eval(f'rng({seed})', nargout=0)
 
     def rand(self, *args, seed=None):
         """
         Generate uniformly distributed random numbers using MATLAB's rand.
 
-        Parameters:
-        -----------
-        *args : int or tuple
-            Shape of output array
-        seed : int, optional
-            If provided, use this seed for this specific generation
+        Args:
+            *args (int or tuple): Shape of output array. Can be:
+                - No args: returns single value
+                - Single number n: returns square matrix (n,n)
+                - Two numbers m,n: returns matrix (m,n)
+                - Tuple (m,n): returns matrix (m,n)
+            seed (int, optional): If provided, use this seed for this specific generation
+        
+        Returns:
+            float or np.ndarray: Random number(s) uniformly distributed in [0,1)
         """
         if seed is not None:
             self._set_seed(seed)
@@ -58,12 +72,16 @@ class Matlab_RNG:
         """
         Generate standard normal random numbers using MATLAB's randn.
 
-        Parameters:
-        -----------
-        *args : tuple of int
-            Shape of output array
-        seed : int, optional
-            If provided, use this seed for this specific generation
+        Args:
+            *args (int or tuple): Shape of output array. Can be:
+                - No args: returns single value
+                - Single number n: returns square matrix (n,n)
+                - Two numbers m,n: returns matrix (m,n)
+                - Tuple (m,n): returns matrix (m,n)
+            seed (int, optional): If provided, use this seed for this specific generation
+        
+        Returns:
+            float or np.ndarray: Random number(s) from standard normal distribution
         """
         if seed is not None:
             self._set_seed(seed)
@@ -87,16 +105,18 @@ class Matlab_RNG:
         """
         Generate random numbers from normal distribution using MATLAB's normrnd.
 
-        Parameters:
-        -----------
-        mu : float
-            Mean of the distribution
-        sigma : float
-            Standard deviation of the distribution
-        *args : int or tuple, optional
-            Shape of output array
-        seed : int, optional
-            If provided, use this seed for this specific generation
+        Args:
+            mu (float): Mean of the distribution
+            sigma (float): Standard deviation of the distribution
+            *args (int or tuple, optional): Shape of output array
+            seed (int, optional): If provided, use this seed for this specific generation
+        
+        Returns:
+            float or np.ndarray: Random number(s) from normal distribution
+        
+        Raises:
+            TypeError: If standard deviation is not a number
+            ValueError: If standard deviation is not positive
         """
         if not isinstance(sigma, (int, float, np.integer, np.floating)):
             raise TypeError("Standard deviation must be a number")
@@ -124,16 +144,18 @@ class Matlab_RNG:
         """
         Generate random numbers from uniform distribution using MATLAB's unifrnd.
 
-        Parameters:
-        -----------
-        low : float
-            Lower boundary of output interval
-        high : float
-            Upper boundary of output interval
-        *args : int or tuple, optional
-            Shape of output array
-        seed : int, optional
-            If provided, use this seed for this specific generation
+        Args:
+            low (float): Lower boundary of output interval
+            high (float): Upper boundary of output interval
+            *args (int or tuple, optional): Shape of output array
+            seed (int, optional): If provided, use this seed for this specific generation
+        
+        Returns:
+            float or np.ndarray: Random number(s) from uniform distribution
+        
+        Raises:
+            TypeError: If boundaries are not numbers
+            ValueError: If upper bound is not greater than lower bound
         """
         if not isinstance(low, (int, float, np.integer, np.floating)) or \
            not isinstance(high, (int, float, np.integer, np.floating)):
@@ -162,14 +184,13 @@ class Matlab_RNG:
         """
         Generate random integers using MATLAB's randi.
 
-        Parameters:
-        -----------
-        imax : int
-            Upper bound of random integers (inclusive)
-        *args : int or tuple, optional
-            Shape of output array
-        seed : int, optional
-            If provided, use this seed for this specific generation
+        Args:
+            imax (int): Upper bound of random integers (inclusive)
+            *args (int or tuple, optional): Shape of output array
+            seed (int, optional): If provided, use this seed for this specific generation
+        
+        Returns:
+            int or np.ndarray: Random integer(s) in range [1, imax]
         """
         if seed is not None:
             self._set_seed(seed)
@@ -193,14 +214,17 @@ class Matlab_RNG:
         """
         Generate random numbers from Poisson distribution using MATLAB's poissrnd.
 
-        Parameters:
-        -----------
-        lam : float
-            The expected number of events occurring
-        *args : int or tuple, optional
-            Shape of output array
-        seed : int, optional
-            If provided, use this seed for this specific generation
+        Args:
+            lam (float): The expected number of events occurring (lambda parameter)
+            *args (int or tuple, optional): Shape of output array. Can be:
+                - No args: returns single value
+                - Single number n: returns square matrix (n,n)
+                - Two numbers m,n: returns matrix (m,n)
+                - Tuple (m,n): returns matrix (m,n)
+            seed (int, optional): If provided, use this seed for this specific generation
+        
+        Returns:
+            int or np.ndarray: Random number(s) from Poisson distribution
         """
         if seed is not None:
             self._set_seed(seed)
@@ -214,65 +238,60 @@ class Matlab_RNG:
             if isinstance(args[0], (tuple, list)):
                 m, n = args[0]
             else:
-                return np.array(self.eng.poissrnd(float(lam), 
-                                                    float(args[0]), float(args[0])))
+                # Single number n, return square matrix (n,n)
+                return np.array(self.eng.poissrnd(float(lam), float(args[0]), float(args[0])))
         else:
             m, n = args
-            return np.array(self.eng.poissrnd(float(lam), float(m), float(n)))
+        return np.array(self.eng.poissrnd(float(lam), float(m), float(n)))
 
     def randperm(self, n, seed=None):
         """
         Generate random permutation using MATLAB's randperm.
 
-        Parameters:
-        -----------
-        n : int
-            Length of permutation
-        seed : int, optional
-            If provided, use this seed for this specific generation
+        Args:
+            n (int): Length of permutation
+            seed (int, optional): If provided, use this seed for this specific generation
+        
+        Returns:
+            np.ndarray: Array of permuted numbers from 1 to n with shape (1,n) to match MATLAB
+        
+        Raises:
+            ValueError: If n is not a positive integer
         """
+        # Check if n is positive integer
         if not isinstance(n, (int, np.integer)) or n <= 0:
             raise ValueError("n must be a positive integer")
-
+        
+        # If seed is provided, save current state and set new seed
         if seed is not None:
             self._set_seed(seed)
 
+        # Call MATLAB's randperm and keep the shape (1,n) to match MATLAB
         return np.array(self.eng.randperm(float(n)), dtype=float)[0]
     
     def multivariate_normal(self, mean, cov, size=None, seed=None):
         """
         Generate random samples from multivariate normal distribution using MATLAB's mvnrnd.
-        Works for both univariate (1D) and multivariate cases.
-
-        Parameters:
-        -----------
-        mean : array_like or scalar
-            Mean of the distribution. For univariate case, it can be a scalar.
-            For multivariate case, it should be a 1-D array of shape (N,) where N is the dimension.
-        cov : array_like or scalar
-            Covariance matrix of the distribution.
-            For univariate case, it can be a scalar (variance).
-            For multivariate case, it should be a 2-D array of shape (N, N).
-        size : int or tuple, optional
-            Number of samples to generate. If None, returns one sample.
-            If int, returns array of shape (size, N).
-        seed : int, optional
-            If provided, this seed will be used for this specific random generation.
-            The generator will return to its previous state after generation.
-
+        
+        Args:
+            mean (array_like or scalar): Mean of the distribution. For univariate case, can be scalar.
+                For multivariate case, should be 1-D array of shape (N,) where N is dimension.
+            cov (array_like or scalar): Covariance matrix of the distribution.
+                For univariate case, can be scalar (variance).
+                For multivariate case, should be 2-D array of shape (N, N).
+            size (int, optional): Number of samples to generate. If None, returns one sample.
+                If int, returns array of shape (size, N).
+            seed (int, optional): If provided, use this seed for this specific generation
+        
         Returns:
-        --------
-        out : ndarray
-            Drawn samples from the multivariate normal distribution.
-            If size is None: returns array of shape (N,)
-            If size is int: returns array of shape (size, N)
-
+            np.ndarray: Drawn samples from multivariate normal distribution.
+                If size is None: returns array of shape (N,)
+                If size is int: returns array of shape (size, N)
+        
         Raises:
-        -------
-        TypeError
-            If inputs are not of the correct type
-        ValueError
-            If covariance matrix is not symmetric or dimensions don't match
+            TypeError: If inputs are not of the correct type
+            ValueError: If covariance matrix is not symmetric or dimensions don't match
+            RuntimeError: If MATLAB mvnrnd encounters an error
         """
         # Set seed if provided
         if seed is not None:
@@ -340,78 +359,32 @@ class Matlab_RNG:
                 raise RuntimeError(f"MATLAB mvnrnd error: {str(e)}")
             raise  
 
-    def randperm(self, n, seed=None):
-        """
-        Generate random permutation using MATLAB's randperm.
-        Note: randperm only takes one argument in MATLAB.
-
-        Parameters:
-        -----------
-        n : int
-            Length of permutation
-        seed : int, optional
-            If provided, this seed will be used for this specific random generation
-            The generator will be restored to its previous state after generation
-
-        Returns:
-        --------
-        np.ndarray
-            Array of permuted numbers from 1 to n with shape (1,n) to match MATLAB
-        """
-        # Check if n is positive integer
-        if not isinstance(n, (int, np.integer)) or n <= 0:
-            raise ValueError("n must be a positive integer")
-        
-        # If seed is provided, save current state and set new seed
-        if seed is not None:
-            self._set_seed(seed)
-
-        # Call MATLAB's randperm and keep the shape (1,n) to match MATLAB
-        return np.array(self.eng.randperm(float(n)), dtype=float)[0]
-
-    def poisson(self, lam, *args, seed=None):
-        """
-        Generate random numbers from Poisson distribution using MATLAB's poissrnd.
-
-        Parameters:
-        -----------
-        lam : float
-            The expected number of events occurring (lambda parameter)
-        *args : int or tuple, optional
-            Shape of output array. Can be:
-            - No args: returns single value
-            - Single number n: returns square matrix (n,n)
-            - Two numbers m,n: returns matrix (m,n)
-            - Tuple (m,n): returns matrix (m,n)
-        seed : int, optional
-            If provided, this seed will be used for this specific random generation
-            The generator will be restored to its previous state after generation
-        """
-        if len(args) > 0:
-            self._check_dimensions(*args)
-
-        if seed is not None:
-            self._set_seed(seed)
-
-        if len(args) == 0:
-            return int(self.eng.poissrnd(float(lam)))
-        elif len(args) == 1:
-            if isinstance(args[0], (tuple, list)):
-                m, n = args[0]
-            else:
-                # Single number n, return square matrix (n,n)
-                return np.array(self.eng.poissrnd(float(lam), float(args[0]), float(args[0])))
-        else:
-            m, n = args
-        return np.array(self.eng.poissrnd(float(lam), float(m), float(n)))
-
     def __del__(self):
-        """Cleanup: close MATLAB engine"""
+        """
+        Cleanup: close MATLAB engine.
+        
+        Args:
+            None
+        
+        Returns:
+            None: Properly closes MATLAB engine connection
+        """
         if hasattr(self, 'eng'):
             self.eng.quit()
 
     def _check_dimensions(self, *args):
-        """Helper function to validate dimensions"""
+        """
+        Helper function to validate dimensions.
+        
+        Args:
+            *args: Dimension arguments to validate
+        
+        Returns:
+            None: Validates that all arguments are valid dimensions
+        
+        Raises:
+            ValueError: If dimensions are not numeric, not integers, or negative
+        """
         for arg in args:
             if not isinstance(arg, (int, float, np.integer, np.floating)):
                 raise ValueError("Dimensions must be numeric")

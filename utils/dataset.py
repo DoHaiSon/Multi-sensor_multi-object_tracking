@@ -4,7 +4,22 @@ import json
 from datetime import datetime
 
 def save_ground_truth(truth, save_dir, scenario_name=None):
-    """Save ground truth data in the new structure."""
+    """
+    Save ground truth data in the new structure.
+    
+    Args:
+        truth (dict): Ground truth data dictionary. Contains:
+            - K: Number of time steps
+            - X: List of target states for each time step
+            - N: Number of targets at each time step
+            - L: Ground truth labels for targets
+            - track_list: Absolute index target identities
+        save_dir (str): Base directory for saving datasets
+        scenario_name (str, optional): Name for the scenario. Defaults to 'default'.
+    
+    Returns:
+        str: Path to the saved ground truth directory
+    """
     scenario_name = scenario_name or 'default'
     scenario_dir = os.path.join(save_dir, f'scenario_{scenario_name}')
     truth_dir = os.path.join(scenario_dir, 'ground_truth')
@@ -45,7 +60,21 @@ def save_ground_truth(truth, save_dir, scenario_name=None):
     return truth_dir
 
 def save_measurements(measurements, save_dir, scenario_name=None):
-    """Save measurements data in the new structure."""
+    """
+    Save measurements data in the new structure.
+    
+    Args:
+        measurements (dict): Measurements data dictionary. Contains:
+            - K: Number of time steps
+            - Z: List of measurements for each sensor at each time step
+            - P_D: Detection probability for each sensor at each time step
+            - lambda_c: Expected number of clutter returns for each sensor
+        save_dir (str): Base directory for saving datasets
+        scenario_name (str, optional): Name for the scenario. Defaults to 'default'.
+    
+    Returns:
+        str: Path to the saved measurements directory
+    """
     scenario_name = scenario_name or 'default'
     scenario_dir = os.path.join(save_dir, f'scenario_{scenario_name}')
     meas_dir = os.path.join(scenario_dir, 'measurements')
@@ -80,12 +109,37 @@ def save_measurements(measurements, save_dir, scenario_name=None):
     return meas_dir
 
 def save_metadata(args, model, save_dir, scenario_name=None):
-    """Save scenario metadata and model configuration."""
+    """
+    Save scenario metadata and model configuration.
+    
+    Args:
+        args (Namespace): Arguments containing configuration parameters
+        model (object): Model instance with sensor and parameter configurations
+        save_dir (str): Base directory for saving datasets
+        scenario_name (str, optional): Name for the scenario. Defaults to 'default'.
+    
+    Returns:
+        str: Path to the saved metadata file
+    """
     scenario_name = scenario_name or 'default'
     scenario_dir = os.path.join(save_dir, f'scenario_{scenario_name}')
     
     if not os.path.exists(scenario_dir):
         os.makedirs(scenario_dir)
+    
+    # Get sensor types - handle both object and dictionary formats
+    sensor_types = []
+    if hasattr(model, 'sensors'):
+        for sensor in model.sensors:
+            if hasattr(sensor, 'sensor_type'):
+                # New sensor object format
+                sensor_types.append(sensor.sensor_type)
+            elif isinstance(sensor, dict) and 'type' in sensor:
+                # Old dictionary format
+                sensor_types.append(sensor['type'])
+            else:
+                # Fallback
+                sensor_types.append('unknown')
     
     # Prepare metadata
     metadata = {
@@ -119,7 +173,7 @@ def save_metadata(args, model, save_dir, scenario_name=None):
         # Sensor information
         'sensors': {
             'num_sensors': len(model.sensors) if hasattr(model, 'sensors') else 0,
-            'sensor_types': [sensor['type'] for sensor in model.sensors] if hasattr(model, 'sensors') else []
+            'sensor_types': sensor_types
         }
     }
     
@@ -131,7 +185,18 @@ def save_metadata(args, model, save_dir, scenario_name=None):
     return metadata_file
 
 def save_summary(truth, measurements, save_dir, scenario_name=None):
-    """Save dataset summary statistics."""
+    """
+    Save dataset summary statistics.
+    
+    Args:
+        truth (dict): Ground truth data dictionary for statistics calculation
+        measurements (dict): Measurements data dictionary for statistics calculation
+        save_dir (str): Base directory for saving datasets
+        scenario_name (str, optional): Name for the scenario. Defaults to 'default'.
+    
+    Returns:
+        str: Path to the saved summary file
+    """
     scenario_name = scenario_name or 'default'
     scenario_dir = os.path.join(save_dir, f'scenario_{scenario_name}')
     

@@ -4,6 +4,12 @@ import subprocess
 def find_latest_log_dir(log_dir):
     """
     Find the latest log directory in the given log_dir.
+    
+    Args:
+        log_dir (str): Path to the directory containing log subdirectories
+    
+    Returns:
+        str: Path to the most recently modified subdirectory
     """
     # Get the list of subdirectories in log_dir
     subdirs = [os.path.join(log_dir, d) for d in os.listdir(log_dir) if os.path.isdir(os.path.join(log_dir, d))]
@@ -14,7 +20,17 @@ def find_latest_log_dir(log_dir):
 def start_tensorboard(log_dir, port=6006):
     """
     Start TensorBoard with the given log_dir on the specified port.
-    If the port is in use, try the next port (port + 1).
+    
+    Args:
+        log_dir (str): Path to the log directory for TensorBoard
+        port (int, optional): Port number to start TensorBoard on. Defaults to 6006.
+            If the port is in use, will try the next port (port + 1)
+    
+    Returns:
+        None: Starts TensorBoard subprocess
+    
+    Raises:
+        subprocess.CalledProcessError: If TensorBoard fails to start on both ports
     """
     try:
         # Attempt to start TensorBoard on the specified port
