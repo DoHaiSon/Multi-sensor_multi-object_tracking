@@ -51,7 +51,7 @@ def gen_measurements(args, sensors, truth, rng=None, seed=None):
                 seed_pd = seed_meas = seed_nc = seed_clutter = None
 
             if truth['N'][k] > 0:
-                # Get P_D for first-half or second-half
+                # Get P_D
                 sensor = sensors[s]
                 P_D = sensor.P_D_rng[0]
                 
@@ -72,7 +72,7 @@ def gen_measurements(args, sensors, truth, rng=None, seed=None):
                 else:
                     meas['Z'][k][s] = np.array([])
             
-            # Get clutter rate for first-half or second-half
+            # Get clutter rate 
             sensor = sensors[s]
             lambda_c = sensor.lambda_c_rng[0] if k < 50 else sensor.lambda_c_rng[1]
             meas['lambda_c'][k,s] = lambda_c

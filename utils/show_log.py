@@ -40,8 +40,17 @@ def start_tensorboard(log_dir, port=6006):
         subprocess.run(["tensorboard", "--logdir", log_dir, "--port", str(port + 1), '--load_fast', 'false'], check=True)
 
 if __name__ == "__main__":
-    # Define the log directory
-    log_dir = os.path.join(os.path.dirname(__file__), '..')
+    # Get the absolute path of the script's directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Navigate to the logs directory relative to the script
+    log_dir = os.path.join(script_dir, '..', 'logs')
+    log_dir = os.path.abspath(log_dir) 
+    
+    # Check if logs directory exists
+    if not os.path.exists(log_dir):
+        print(f"Logs directory not found: {log_dir}")
+        exit(1)
+    
     # Find the latest log directory
     latest_log_dir = find_latest_log_dir(log_dir)
     print(f"Starting TensorBoard for the latest log directory: {latest_log_dir}")
