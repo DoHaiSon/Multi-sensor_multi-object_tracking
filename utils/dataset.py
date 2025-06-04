@@ -127,19 +127,8 @@ def save_metadata(args, model, save_dir, scenario_name=None):
     if not os.path.exists(scenario_dir):
         os.makedirs(scenario_dir)
     
-    # Get sensor types - handle both object and dictionary formats
-    sensor_types = []
-    if hasattr(model, 'sensors'):
-        for sensor in model.sensors:
-            if hasattr(sensor, 'sensor_type'):
-                # New sensor object format
-                sensor_types.append(sensor.sensor_type)
-            elif isinstance(sensor, dict) and 'type' in sensor:
-                # Old dictionary format
-                sensor_types.append(sensor['type'])
-            else:
-                # Fallback
-                sensor_types.append('unknown')
+    # Get sensor types from sensor objects
+    sensor_types = [sensor.sensor_type for sensor in model.sensors] if hasattr(model, 'sensors') else []
     
     # Prepare metadata
     metadata = {

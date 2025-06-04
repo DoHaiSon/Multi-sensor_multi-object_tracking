@@ -51,12 +51,9 @@ def gen_measurements(args, sensors, truth, rng=None, seed=None):
                 seed_pd = seed_meas = seed_nc = seed_clutter = None
 
             if truth['N'][k] > 0:
-                # Get P_D for first-half or second-half - use sensor object attributes
+                # Get P_D for first-half or second-half
                 sensor = sensors[s]
-                if hasattr(sensor, 'P_D_rng'):
-                    P_D = sensor.P_D_rng[0]
-                else:
-                    P_D = getattr(sensor, 'detection_prob', [0.95, 0.95])[0]
+                P_D = sensor.P_D_rng[0]
                 
                 # Generate detection indicators using provided RNG or numpy
                 if rng is not None:
@@ -75,12 +72,9 @@ def gen_measurements(args, sensors, truth, rng=None, seed=None):
                 else:
                     meas['Z'][k][s] = np.array([])
             
-            # Get clutter rate for first-half or second-half - use sensor object attributes
+            # Get clutter rate for first-half or second-half
             sensor = sensors[s]
-            if hasattr(sensor, 'lambda_c_rng'):
-                lambda_c = sensor.lambda_c_rng[0] if k < 50 else sensor.lambda_c_rng[1]
-            else:
-                lambda_c = getattr(sensor, 'clutter_rate', [10, 15])[0] if k < 50 else getattr(sensor, 'clutter_rate', [10, 15])[1]
+            lambda_c = sensor.lambda_c_rng[0] if k < 50 else sensor.lambda_c_rng[1]
             meas['lambda_c'][k,s] = lambda_c
             
             # Generate clutter using provided RNG or numpy
@@ -92,12 +86,7 @@ def gen_measurements(args, sensors, truth, rng=None, seed=None):
                 N_c = np.random.poisson(lambda_c)  # NumPy random
             
             if N_c > 0:
-                # Get range_c from sensor object
-                if hasattr(sensor, 'range_c'):
-                    range_c = sensor.range_c
-                else:
-                    range_c = getattr(sensor, 'clutter_range', [[0, 2*np.pi], [0, 4000]])
-                range_c = np.array(range_c)
+                range_c = np.array(sensor.range_c)
                 
                 # Handle both 1D and 2D range_c
                 if range_c.ndim == 1:
@@ -113,13 +102,13 @@ def gen_measurements(args, sensors, truth, rng=None, seed=None):
                     if rng is not None:
                         C = np.tile(range_c[:,0][:,None], [1, N_c]) + \
                             np.diag(range_c @ [-1, 1]) @ \
-                            rng.rand(getattr(sensor, 'z_dim', 2), N_c, seed=seed_clutter)  # Matlab_RNG
+                            rng.rand(sensor.z_dim, N_c, seed=seed_clutter)  # Matlab_RNG
                     else:
                         if seed_clutter is not None:
                             np.random.seed(seed_clutter)
                         C = np.tile(range_c[:,0][:,None], [1, N_c]) + \
                             np.diag(range_c @ [-1, 1]) @ \
-                            np.random.rand(getattr(sensor, 'z_dim', 2), N_c)  # NumPy random
+                            np.random.rand(sensor.z_dim, N_c)  # NumPy random
                 # Combine target measurements and clutter
                 if len(meas['Z'][k][s]) > 0:
                     # Ensure both matrices have the same number of rows for hstack
@@ -149,58 +138,29 @@ def gen_MS_observation(sensors, s, X, W, rng=None, seed=None):
     Generate observations for multiple sensors using sensor class methods.
     
     Args:
-        sensors: List of sensor objects or sensor dictionaries
+        sensors: List of sensor objects
         s: Sensor index
         X: Target states matrix (state_dim x num_targets)
         W: Noise type ('noise', 'noiseless') or noise matrix
         rng: Random number generator (Matlab_RNG instance), optional
-            If None, will use numpy's default random generator
         seed: Random seed for reproducible results, optional
-            If provided, will be used for noise generation
     
     Returns:
         Z: Measurement matrix (z_dim x num_targets)
-            Generated measurements from the specified sensor
     """
     if X.size == 0:
         return np.array([])
     
     sensor = sensors[s]
     
-    # Check if sensor has generate_measurement method (new sensor class)
-    if hasattr(sensor, 'generate_measurement'):
-        # Use new sensor class method
-        if W == 'noise':
-            return sensor.generate_measurement(X, add_noise=True, rng=rng, seed=seed)
-        elif W == 'noiseless':
-            return sensor.generate_measurement(X, add_noise=False, rng=rng, seed=seed)
-        else:
-            # W is a noise matrix
-            Z = sensor.generate_measurement(X, add_noise=False, rng=rng, seed=seed)
-            return Z + W
+    if W == 'noise':
+        return sensor.generate_measurement(X, add_noise=True, rng=rng, seed=seed)
+    elif W == 'noiseless':
+        return sensor.generate_measurement(X, add_noise=False, rng=rng, seed=seed)
     else:
-        # For backward compatibility with dictionary-based sensors
-        # Convert to sensor object temporarily
-        from sensors.sensor_factory import SensorFactory
-        try:
-            sensor_obj = SensorFactory.create_sensor({
-                'type': sensor['type'],
-                'id': s,
-                'position': sensor['X'],
-                'P_D_rng': sensor['P_D_rng'],
-                'lambda_c_rng': sensor['lambda_c_rng'],
-                'R': sensor['R'],
-                'range_c': sensor['range_c']
-            })
-            if W == 'noise':
-                return sensor_obj.generate_measurement(X, add_noise=True, rng=rng, seed=seed)
-            elif W == 'noiseless':
-                return sensor_obj.generate_measurement(X, add_noise=False, rng=rng, seed=seed)
-            else:
-                Z = sensor_obj.generate_measurement(X, add_noise=False, rng=rng, seed=seed)
-                return Z + W
-        except Exception as e:
-            raise ValueError(f"Cannot process sensor {s}: {e}")
+        # W is a noise matrix
+        Z = sensor.generate_measurement(X, add_noise=False, rng=rng, seed=seed)
+        return Z + W
 
 def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer):
     """
@@ -208,12 +168,9 @@ def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer
     
     Args:
         args: Arguments from parse_args containing configuration parameters
-        truth: Ground truth data dictionary. Contains:
-            - N: Number of targets at each time step
-            - X: List of target states for each time step
-        measurements: Measurements dictionary. Contains:
-            - Z: List of measurements for each sensor at each time step
-        sensors: List of sensor models (objects or dictionaries)
+        truth: Ground truth data dictionary
+        measurements: Measurements dictionary
+        sensors: List of sensor objects
         start_k: Start time step for plotting
         end_k: End time step for plotting
         writer: TensorboardX SummaryWriter for logging video
@@ -226,7 +183,6 @@ def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer
     import gc
 
     frames = []
-    # Create color palette based on number of sensors
     sensor_colors = create_color_palette(len(sensors))
     
     for k in range(start_k, end_k):
@@ -242,15 +198,8 @@ def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer
         # Plot sensor positions and their measurements
         for s in range(len(sensors)):
             sensor = sensors[s]
-            
-            # Get sensor position and type - handle both object and dict formats
-            if hasattr(sensor, 'position'):
-                sensor_pos = sensor.position
-                sensor_type = getattr(sensor, 'sensor_type', 'unknown')
-            else:
-                # Fallback for dictionary-based sensors
-                sensor_pos = sensor['X']
-                sensor_type = sensor['type']
+            sensor_pos = sensor.position
+            sensor_type = sensor.sensor_type
             
             # Plot sensor position
             ax.scatter(sensor_pos[0], sensor_pos[1],
@@ -269,9 +218,9 @@ def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer
                     # Convert polar to Cartesian for plotting
                     for i in range(measurements['Z'][k][s].shape[1]):
                         brg = measurements['Z'][k][s][0,i]
-                        rng = measurements['Z'][k][s][1,i]
-                        x = sensor_pos[0] + rng * np.cos(brg)
-                        y = sensor_pos[1] + rng * np.sin(brg)
+                        range_val = measurements['Z'][k][s][1,i]
+                        x = sensor_pos[0] + range_val * np.cos(brg)
+                        y = sensor_pos[1] + range_val * np.sin(brg)
                         ax.scatter(x, y,
                                  c=[sensor_colors[s]], marker='o', s=64,
                                  alpha=0.5)
@@ -279,8 +228,7 @@ def plot_measurements(args, truth, measurements, sensors, start_k, end_k, writer
                     # Plot bearing measurements as lines from sensor position
                     for i in range(measurements['Z'][k][s].shape[1]):
                         brg = measurements['Z'][k][s][0,i]
-                        # Plot a line in the bearing direction
-                        line_length = 4000  # Same as plot limits
+                        line_length = 4000
                         x = sensor_pos[0] + line_length * np.cos(brg)
                         y = sensor_pos[1] + line_length * np.sin(brg)
                         ax.plot([sensor_pos[0], x],

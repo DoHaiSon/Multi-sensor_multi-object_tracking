@@ -63,39 +63,27 @@ def log_params(args, model, writer):
         
         writer.add_text('Birth model parameters', arg_summary)
 
-    # Log sensor parameters - Updated to handle sensor objects
+    # Log sensor parameters
     arg_summary = "| **Sensor parameter** | **Value** |\n|---|---|\n"
     for i, sensor in enumerate(model.sensors):
         arg_summary += f"| **Sensor {i+1}** | |\n"
         
-        # Handle sensor objects instead of dictionaries
-        if hasattr(sensor, '__dict__'):
-            # Get sensor attributes as a dictionary
-            sensor_attrs = {
-                'type': getattr(sensor, 'sensor_type', 'unknown'),
-                'position': getattr(sensor, 'position', None),
-                'P_D_rng': getattr(sensor, 'P_D_rng', None),
-                'lambda_c_rng': getattr(sensor, 'lambda_c_rng', None),
-                'R': getattr(sensor, 'R', None),
-                'range_c': getattr(sensor, 'range_c', None),
-                'z_dim': getattr(sensor, 'z_dim', getattr(sensor, 'measurement_dim', None))
-            }
-            
-            for key, value in sensor_attrs.items():
-                if value is not None:
-                    if isinstance(value, np.ndarray):
-                        value_str = one_line_array(value)
-                    else:
-                        value_str = str(value)
-                    arg_summary += f"| {key} | {value_str} |\n"
-        else:
-            # Fallback for dictionary-based sensors (backward compatibility)
-            for key, value in sensor.items():
-                if isinstance(value, np.ndarray):
-                    value_str = one_line_array(value)
-                else:
-                    value_str = str(value)
-                arg_summary += f"| {key} | {value_str} |\n"
+        sensor_attrs = {
+            'type': sensor.sensor_type,
+            'position': sensor.position,
+            'P_D_rng': sensor.P_D_rng,
+            'lambda_c_rng': sensor.lambda_c_rng,
+            'R': sensor.R,
+            'range_c': sensor.range_c,
+            'z_dim': sensor.z_dim
+        }
+        
+        for key, value in sensor_attrs.items():
+            if isinstance(value, np.ndarray):
+                value_str = one_line_array(value)
+            else:
+                value_str = str(value)
+            arg_summary += f"| {key} | {value_str} |\n"
     
     writer.add_text('Sensor parameters', arg_summary)
 
@@ -120,17 +108,9 @@ def plot_sensor_positions(model, writer):
     colors = create_color_palette(n_sensors)
 
     for i, sensor in enumerate(model.sensors):
-        # Handle sensor objects instead of dictionaries
-        if hasattr(sensor, 'position'):
-            pos = sensor.position
-            sensor_type = getattr(sensor, 'sensor_type', 'unknown')
-            range_c = getattr(sensor, 'range_c', None)
-        else:
-            # Fallback for dictionary-based sensors
-            pos = sensor['X']
-            sensor_type = sensor['type']
-            range_c = sensor['range_c']
-        
+        pos = sensor.position
+        sensor_type = sensor.sensor_type
+        range_c = sensor.range_c
         color = colors[i]
 
         # Plot sensor position with different marker styles based on sensor type
@@ -145,22 +125,21 @@ def plot_sensor_positions(model, writer):
         ax.plot(pos[0], pos[1], marker, color=color, markersize=8, label=label)
         ax.text(pos[0], pos[1], f'S{i+1}', fontsize=9, ha='right', va='bottom')
 
-        # Plot sensor range with increased spacing
-        if range_c is not None:
-            range_c = np.array(range_c)
-            if len(range_c.shape) > 1:  # For range-bearing sensors
-                theta = np.linspace(range_c[0, 0], range_c[0, 1], 50)
-                r = np.linspace(range_c[1, 0], range_c[1, 1], 50)
-                theta_grid, r_grid = np.meshgrid(theta, r)
-                x_grid = r_grid * np.cos(theta_grid) + pos[0]
-                y_grid = r_grid * np.sin(theta_grid) + pos[1]
-                ax.plot(x_grid, y_grid, color=color, alpha=0.3)
-            else:  # For bearing-only sensors
-                theta = np.linspace(range_c[0], range_c[1], 100)
-                r = np.ones_like(theta) * 4000  # Fixed range for visualization
-                x = r * np.cos(theta) + pos[0]
-                y = r * np.sin(theta) + pos[1]
-                ax.plot(x, y, color=color, alpha=0.3)
+        # Plot sensor range
+        range_c = np.array(range_c)
+        if len(range_c.shape) > 1:  # For range-bearing sensors
+            theta = np.linspace(range_c[0, 0], range_c[0, 1], 50)
+            r = np.linspace(range_c[1, 0], range_c[1, 1], 50)
+            theta_grid, r_grid = np.meshgrid(theta, r)
+            x_grid = r_grid * np.cos(theta_grid) + pos[0]
+            y_grid = r_grid * np.sin(theta_grid) + pos[1]
+            ax.plot(x_grid, y_grid, color=color, alpha=0.3)
+        else:  # For bearing-only sensors
+            theta = np.linspace(range_c[0], range_c[1], 100)
+            r = np.ones_like(theta) * 4000
+            x = r * np.cos(theta) + pos[0]
+            y = r * np.sin(theta) + pos[1]
+            ax.plot(x, y, color=color, alpha=0.3)
 
     # Place legend at the bottom
     ax.legend(bbox_to_anchor=(0., -.25, 1., .102), 
