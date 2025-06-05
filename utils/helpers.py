@@ -50,18 +50,17 @@ def log_params(args, model, writer):
     writer.add_text('Survival and Death parameters', arg_summary)
 
     # Log birth model parameters
-    if not args.fixed_birth:
-        arg_summary = "| **Birth model Parameter** | **Value** |\n|---|---|\n"
-        for i, birth in enumerate(model.birth):
-            arg_summary += f"| **Birth model {i+1}** | |\n"
-            for key, value in birth.items():
-                if isinstance(value, np.ndarray):
-                    value_str = one_line_array(value)
-                else:
-                    value_str = str(value)
-                arg_summary += f"| {key} | {value_str} |\n"
-        
-        writer.add_text('Birth model parameters', arg_summary)
+    arg_summary = "| **Birth model Parameter** | **Value** |\n|---|---|\n"
+    for i, birth in enumerate(model.birth):
+        arg_summary += f"| **Birth model {i+1}** | |\n"
+        for key, value in birth.items():
+            if isinstance(value, np.ndarray):
+                value_str = one_line_array(value)
+            else:
+                value_str = str(value)
+            arg_summary += f"| {key} | {value_str} |\n"
+    
+    writer.add_text('Birth model parameters', arg_summary)
 
     # Log sensor parameters
     arg_summary = "| **Sensor parameter** | **Value** |\n|---|---|\n"

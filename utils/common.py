@@ -210,11 +210,11 @@ def create_dataset(args, writer, seed=None):
 
     # Generate ground truth
     truth = gen_truth(args, model.dynamics, seed=seed)
-    plot_truth(truth, 0, args.K, writer)
 
     # Generate measurements
     measurements = gen_measurements(args, model.sensors, truth, seed=seed)
     if args.enable_logging:
+        plot_truth(truth, 0, args.K, writer)
         plot_measurements(args, truth, measurements, model.sensors, 0, args.K, writer)
 
     # Save datasets if enabled (always save as timestep data)

@@ -18,8 +18,16 @@ P_S: 0.95
 Q_S: 0.05  # 1 - P_S
 P_S_clt: 0.9
 
-# Birth parameters
-fixed_birth: true
+# Birth model parameters
+birth_model:
+  num_birth_components: 4
+  birth_probability: 0.01  # r in birth model
+  birth_positions:
+    - [-1500, 0, 250, 0, 0]
+    - [-250, 0, 1000, 0, 0]
+    - [250, 0, 750, 0, 0]
+    - [1000, 0, 1500, 0, 0]
+  birth_covariance_diag: [50, 50, 50, 50, "6*(np.pi/180)"]
 
 # Motion model
 CT: true

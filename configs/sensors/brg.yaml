@@ -25,16 +25,3 @@ sensors:
     clutter_range: [0, "2*np.pi"]  # [0, 2*pi]
     pdf_c: "1/(2*np.pi)"  # 1/(2*pi)
 
-# Birth model positions  
-birth_positions:
-  - [-1500, 0, 250, 0, 0]
-  - [-250, 0, 1000, 0, 0]
-  - [250, 0, 750, 0, 0]
-  - [1000, 0, 1500, 0, 0]
-
-birth_covariance_diag: [50, 50, 50, 50, "6*(np.pi/180)"]  # 6*pi/180
-
-# Observation parameters specific to bearing-only model
-bearing_D: "0.2*np.pi/180"  # bearing measurement noise standard deviation
-pdf_c: "1/(2*np.pi)"  # clutter density
-clutter_range_bearing: [0, "2*np.pi"]  # full circle bearing range

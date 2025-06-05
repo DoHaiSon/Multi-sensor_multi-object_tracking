@@ -67,12 +67,3 @@ sensors:
       clutter_rate: [10, 10]  # [lambda_c lambda_c]
       clutter_range: [["-(np.pi/2)", "np.pi/2"], [0, 4000]]  # range_c_1 = [-pi/2, pi/2; 0, 4000]
       pdf_c: "1/(np.pi * 4000)"  # 1/(pi * 4000)
-
-# Birth model positions
-birth_positions:
-  - [-1500, 0, 250, 0, 0]
-  - [-250, 0, 1000, 0, 0]
-  - [250, 0, 750, 0, 0]
-  - [1000, 0, 1500, 0, 0]
-
-birth_covariance_diag: [50, 50, 50, 50, "6*(np.pi/180)"]  # 6*pi/180

@@ -14,7 +14,7 @@ def gen_truth(args, model, rng=None, seed=None):
             scenario_params: Dictionary containing:
                 nbirths: Number of targets to generate
                 wturn: Turn rate
-                xstart: Initial states matrix (state_dim × num_targets)
+                xstart: Initial states matrix (state_dim x num_targets)
                 tbirth: Birth times for each target
                 tdeath: Death times for each target
         model: Model containing dynamics parameters

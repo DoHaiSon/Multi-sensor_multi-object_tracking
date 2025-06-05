@@ -162,7 +162,7 @@ class Brg_Model:
 
     def initialize_birth_model(self):
         """
-        Initialize birth model parameters from config.
+        Initialize birth model parameters from args configuration.
         
         Args:
             None
@@ -177,21 +177,34 @@ class Brg_Model:
                 - P: Covariance matrix
         """
         birth = []
-        positions = self.sensor_config.get('birth_positions', [
-            [-1500, 0, 250, 0, 0],
-            [-250, 0, 1000, 0, 0],
-            [250, 0, 750, 0, 0],
-            [1000, 0, 1500, 0, 0]
-        ])
         
-        diag_values = self.sensor_config.get('birth_covariance_diag', [50, 50, 50, 50, 0.1047])
-        B_diag = np.diag(diag_values)
+        # Load birth configuration from args
+        if hasattr(self.args, 'birth_model'):
+            birth_config = self.args.birth_model
+            positions = birth_config.get('birth_positions')
+            diag_values = birth_config.get('birth_covariance_diag')
+            birth_prob = birth_config.get('birth_probability', 0.01)
+        else:
+            raise ValueError("Birth model configuration not found in args. Please check default.yaml configuration.")
+        
+        # Handle string expressions in diag_values
+        evaluated_diag = []
+        for val in diag_values:
+            if isinstance(val, str) and 'np.' in val:
+                try:
+                    evaluated_diag.append(eval(val, {"np": np}))
+                except:
+                    evaluated_diag.append(val)
+            else:
+                evaluated_diag.append(val)
+        
+        B_diag = np.diag(evaluated_diag)
         P = np.dot(B_diag, B_diag)
         
         for position in positions:
             birth_model = {
                 'L': 1,
-                'r': 0.01,
+                'r': birth_prob,
                 'w': np.array([1.0]),
                 'm': np.array(position).reshape(-1, 1),
                 'B': B_diag,
