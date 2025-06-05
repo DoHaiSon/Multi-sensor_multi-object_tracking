@@ -1,5 +1,5 @@
 # Inherits from default.yaml for basic parameters  
-# Sensor-specific configurations for bearing-range only model
+# Sensor-specific configurations for bearing only model
 
 # Model configuration
 model: 'brg'
@@ -24,4 +24,3 @@ sensors:
     clutter_rate: [10, 10]  # [lambda_c lambda_c]
     clutter_range: [0, "2*np.pi"]  # [0, 2*pi]
     pdf_c: "1/(2*np.pi)"  # 1/(2*pi)
-
